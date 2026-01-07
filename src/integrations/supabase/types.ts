@@ -340,6 +340,111 @@ export type Database = {
           },
         ]
       }
+      session_responses: {
+        Row: {
+          created_at: string | null
+          error_tags: string[] | null
+          is_correct: boolean | null
+          item_id: string
+          notes: string | null
+          response_id: string
+          response_time_ms: number | null
+          sequence_number: number
+          session_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_tags?: string[] | null
+          is_correct?: boolean | null
+          item_id: string
+          notes?: string | null
+          response_id?: string
+          response_time_ms?: number | null
+          sequence_number: number
+          session_id: string
+        }
+        Update: {
+          created_at?: string | null
+          error_tags?: string[] | null
+          is_correct?: boolean | null
+          item_id?: string
+          notes?: string | null
+          response_id?: string
+          response_time_ms?: number | null
+          sequence_number?: number
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_responses_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "session_responses_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["session_id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          assessment_id: string
+          completed_at: string | null
+          created_at: string | null
+          current_item_index: number
+          form_id: string
+          grade_tag: string | null
+          session_id: string
+          started_at: string | null
+          status: string
+          student_name: string
+        }
+        Insert: {
+          assessment_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          current_item_index?: number
+          form_id: string
+          grade_tag?: string | null
+          session_id?: string
+          started_at?: string | null
+          status?: string
+          student_name: string
+        }
+        Update: {
+          assessment_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          current_item_index?: number
+          form_id?: string
+          grade_tag?: string | null
+          session_id?: string
+          started_at?: string | null
+          status?: string
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "sessions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["form_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

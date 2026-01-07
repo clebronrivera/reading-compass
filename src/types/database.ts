@@ -9,6 +9,8 @@ export type AssessmentBankRow = Tables<'assessment_banks'>;
 export type FormRow = Tables<'forms'>;
 export type ItemRow = Tables<'items'>;
 export type ScoringOutputRow = Tables<'scoring_outputs'>;
+export type SessionRow = Tables<'sessions'>;
+export type SessionResponseRow = Tables<'session_responses'>;
 
 // Insert types
 export type AssessmentInsert = TablesInsert<'assessments'>;
@@ -26,6 +28,12 @@ export type ContentBankUpdate = TablesUpdate<'content_banks'>;
 export type FormUpdate = TablesUpdate<'forms'>;
 export type ItemUpdate = TablesUpdate<'items'>;
 export type ScoringOutputUpdate = TablesUpdate<'scoring_outputs'>;
+export type SessionUpdate = TablesUpdate<'sessions'>;
+export type SessionResponseUpdate = TablesUpdate<'session_responses'>;
+
+// Insert types for new tables
+export type SessionInsert = TablesInsert<'sessions'>;
+export type SessionResponseInsert = TablesInsert<'session_responses'>;
 
 // Component code type (derived from database constraint)
 export type ComponentCode = 'PA' | 'PH' | 'FL' | 'VO' | 'RC';
@@ -36,6 +44,7 @@ export type FormStatus = 'draft' | 'active' | 'retired';
 export type ContentBankStatus = 'empty' | 'in-progress' | 'ready';
 export type ValidationStatus = 'incomplete' | 'valid' | 'needs-review';
 export type ItemType = 'letter' | 'word' | 'sentence' | 'passage' | 'question' | 'prompt';
+export type SessionStatus = 'created' | 'in_progress' | 'completed';
 
 // ASR Section types (for type-safe JSONB access)
 export interface ASRSectionA {

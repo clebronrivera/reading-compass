@@ -6,3 +6,5 @@ export * from './assessmentBanks';
 export * from './forms';
 export * from './items';
 export * from './scoringOutputs';
+export * from './sessions';
+export * from './sessionResponses';
