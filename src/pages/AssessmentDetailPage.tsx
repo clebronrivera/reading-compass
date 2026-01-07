@@ -1,24 +1,60 @@
+import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAssessment } from '@/lib/api/assessments';
 import { useASRVersionsByAssessment } from '@/lib/api/asrVersions';
-import { useContentBanksByAssessment } from '@/lib/api/contentBanks';
+import { useContentBanks } from '@/lib/api/contentBanks';
+import { useAssessmentBanks } from '@/lib/api/assessmentBanks';
 import { useFormsByAssessment } from '@/lib/api/forms';
+import { useItems } from '@/lib/api/items';
 import { useScoringOutputsByAssessment } from '@/lib/api/scoringOutputs';
+import { calculateChainStatus, getStepLabel, type ChainStep } from '@/lib/chainCompletion';
+import { isValidRouteId } from '@/lib/routeValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { Progress } from '@/components/ui/progress';
 import { COMPONENT_INFO } from '@/types/registry';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, XCircle } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 
 export default function AssessmentDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: assessment, isLoading, error, refetch } = useAssessment(id || '');
-  const { data: asrs = [] } = useASRVersionsByAssessment(id || '');
-  const { data: banks = [] } = useContentBanksByAssessment(id || '');
-  const { data: forms = [] } = useFormsByAssessment(id || '');
-  const { data: scoring = [] } = useScoringOutputsByAssessment(id || '');
+
+  // Validate route param before any queries
+  if (!isValidRouteId(id)) {
+    return <ErrorState title="Invalid Route" error="Invalid assessment ID in URL" />;
+  }
+
+  const { data: assessment, isLoading: assessmentLoading, error, refetch } = useAssessment(id);
+  const { data: asrs = [], isLoading: asrsLoading } = useASRVersionsByAssessment(id);
+  const { data: assessmentBanks = [], isLoading: assessmentBanksLoading } = useAssessmentBanks(id);
+  const { data: allBanks = [], isLoading: banksLoading } = useContentBanks();
+  const { data: forms = [], isLoading: formsLoading } = useFormsByAssessment(id);
+  const { data: allItems = [], isLoading: itemsLoading } = useItems();
+  const { data: scoring = [], isLoading: scoringLoading } = useScoringOutputsByAssessment(id);
+
+  // Resolve linked banks from join table
+  const linkedBanks = useMemo(() => {
+    const linkedBankIds = new Set(assessmentBanks.map(ab => ab.content_bank_id));
+    return allBanks.filter(b => linkedBankIds.has(b.content_bank_id));
+  }, [assessmentBanks, allBanks]);
+
+  // Calculate chain status
+  const chainStatus = useMemo(() => {
+    if (!assessment) return null;
+    return calculateChainStatus(
+      assessment,
+      asrs,
+      assessmentBanks,
+      forms,
+      allItems,
+      scoring
+    );
+  }, [assessment, asrs, assessmentBanks, forms, allItems, scoring]);
+
+  const isLoading = assessmentLoading || asrsLoading || assessmentBanksLoading || 
+                    banksLoading || formsLoading || itemsLoading || scoringLoading;
 
   if (isLoading) {
     return <LoadingState title="Loading assessment..." />;
@@ -41,6 +77,18 @@ export default function AssessmentDetailPage() {
 
   const componentInfo = COMPONENT_INFO[assessment.component_code as keyof typeof COMPONENT_INFO];
 
+  // Helper to get chain step status
+  const getStepStatus = (step: ChainStep): boolean => {
+    if (!chainStatus) return false;
+    switch (step) {
+      case 'ASR': return chainStatus.hasASR;
+      case 'BANK': return chainStatus.hasBank;
+      case 'FORMS': return chainStatus.hasForms;
+      case 'ITEMS': return chainStatus.hasItems;
+      case 'SCORING': return chainStatus.hasScoring;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -54,6 +102,44 @@ export default function AssessmentDetailPage() {
         <h1 className="text-2xl font-bold">{assessment.subcomponent_name}</h1>
         <p className="font-mono text-muted-foreground">{assessment.assessment_id}</p>
       </div>
+
+      {/* Dependency Chain Indicator */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Dependency Chain</span>
+            <span className="text-sm font-normal text-muted-foreground">
+              {chainStatus?.completedSteps ?? 0}/5 complete ({chainStatus?.percent ?? 0}%)
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            {(['ASR', 'BANK', 'FORMS', 'ITEMS', 'SCORING'] as ChainStep[]).map((step, i) => {
+              const isComplete = getStepStatus(step);
+              return (
+                <div key={step} className="flex items-center gap-2">
+                  <div className="flex flex-col items-center gap-1">
+                    {isComplete ? (
+                      <CheckCircle2 className="h-6 w-6 text-green-500" />
+                    ) : (
+                      <XCircle className="h-6 w-6 text-red-500" />
+                    )}
+                    <span className="text-xs text-muted-foreground text-center">{getStepLabel(step)}</span>
+                  </div>
+                  {i < 4 && <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                </div>
+              );
+            })}
+          </div>
+          {chainStatus && !chainStatus.isComplete && (
+            <p className="text-sm text-muted-foreground mb-2">
+              Missing: {chainStatus.missingSteps.map(s => getStepLabel(s)).join(', ')}
+            </p>
+          )}
+          <Progress value={chainStatus?.percent ?? 0} className="h-2" />
+        </CardContent>
+      </Card>
       
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
@@ -90,10 +176,10 @@ export default function AssessmentDetailPage() {
               ) : <p className="text-muted-foreground text-sm">None</p>}
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Content Banks ({banks.length})</p>
-              {banks.length > 0 ? (
+              <p className="text-sm text-muted-foreground">Linked Content Banks ({linkedBanks.length})</p>
+              {linkedBanks.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
-                  {banks.map(b => (
+                  {linkedBanks.map(b => (
                     <Link key={b.content_bank_id} to={`/banks/${b.content_bank_id}`} className="text-primary hover:underline font-mono text-sm">
                       {b.content_bank_id}
                     </Link>

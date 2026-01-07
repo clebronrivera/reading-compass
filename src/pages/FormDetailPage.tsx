@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useForm } from '@/lib/api/forms';
 import { useItemsByForm } from '@/lib/api/items';
+import { isValidRouteId } from '@/lib/routeValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -11,8 +12,14 @@ import { ErrorState } from '@/components/ui/error-state';
 
 export default function FormDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: form, isLoading, error, refetch } = useForm(id || '');
-  const { data: items = [] } = useItemsByForm(id || '');
+
+  // Validate route param before any queries
+  if (!isValidRouteId(id)) {
+    return <ErrorState title="Invalid Route" error="Invalid form ID in URL" />;
+  }
+
+  const { data: form, isLoading, error, refetch } = useForm(id);
+  const { data: items = [] } = useItemsByForm(id);
 
   if (isLoading) {
     return <LoadingState title="Loading form..." />;

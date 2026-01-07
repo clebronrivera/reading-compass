@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useASRVersion } from '@/lib/api/asrVersions';
+import { isValidRouteId } from '@/lib/routeValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -10,7 +11,13 @@ import { ErrorState } from '@/components/ui/error-state';
 
 export default function ASRDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: asr, isLoading, error, refetch } = useASRVersion(id || '');
+
+  // Validate route param before any queries
+  if (!isValidRouteId(id)) {
+    return <ErrorState title="Invalid Route" error="Invalid ASR ID in URL" />;
+  }
+
+  const { data: asr, isLoading, error, refetch } = useASRVersion(id);
 
   if (isLoading) {
     return <LoadingState title="Loading ASR..." />;

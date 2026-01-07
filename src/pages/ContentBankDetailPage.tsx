@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useContentBank } from '@/lib/api/contentBanks';
 import { useFormsByBank } from '@/lib/api/forms';
+import { isValidRouteId } from '@/lib/routeValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -10,8 +11,14 @@ import { ErrorState } from '@/components/ui/error-state';
 
 export default function ContentBankDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: bank, isLoading, error, refetch } = useContentBank(id || '');
-  const { data: forms = [] } = useFormsByBank(id || '');
+
+  // Validate route param before any queries
+  if (!isValidRouteId(id)) {
+    return <ErrorState title="Invalid Route" error="Invalid content bank ID in URL" />;
+  }
+
+  const { data: bank, isLoading, error, refetch } = useContentBank(id);
+  const { data: forms = [] } = useFormsByBank(id);
 
   if (isLoading) {
     return <LoadingState title="Loading content bank..." />;
