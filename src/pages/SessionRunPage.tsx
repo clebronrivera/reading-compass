@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import type { ItemContent } from '@/types/database';
 import { ORFRunner } from '@/components/fluency/ORFRunner';
 import { OnsetRimeRunner } from '@/components/phonological/OnsetRimeRunner';
+import { RhymeRunner } from '@/components/phonological/RhymeRunner';
 import type { ORFPassageContent } from '@/types/orf';
 
 export default function SessionRunPage() {
@@ -198,6 +199,16 @@ export default function SessionRunPage() {
   if (session?.assessment_id === 'PA-OONS' && items) {
     return (
       <OnsetRimeRunner 
+        session={session} 
+        items={items} 
+      />
+    );
+  }
+
+  // Route to Rhyme Runner for PA-RHYM sessions
+  if (session?.assessment_id === 'PA-RHYM' && items) {
+    return (
+      <RhymeRunner 
         session={session} 
         items={items} 
       />
