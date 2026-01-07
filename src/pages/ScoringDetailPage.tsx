@@ -1,14 +1,54 @@
 import { useParams, Link } from 'react-router-dom';
-import { getScoringOutputById } from '@/data/scoringOutputs';
+import { useScoringOutput } from '@/lib/api/scoringOutputs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { ArrowLeft } from 'lucide-react';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
+
+interface Metric {
+  metric_id: string;
+  name: string;
+  type: string;
+  description: string;
+}
+
+interface Formula {
+  formula_id: string;
+  name: string;
+  expression: string;
+  inputs: string[];
+  output: string;
+}
+
+interface Flag {
+  flag_id: string;
+  name: string;
+  condition: string;
+  severity: string;
+}
+
+interface Threshold {
+  threshold_id: string;
+  metric_id: string;
+  grade_level: string;
+  benchmark_value?: number;
+  status: string;
+}
 
 export default function ScoringDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const scoring = getScoringOutputById(id || '');
+  const { data: scoring, isLoading, error, refetch } = useScoringOutput(id || '');
+
+  if (isLoading) {
+    return <LoadingState title="Loading scoring output..." />;
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to load scoring output" error={error} onRetry={refetch} />;
+  }
 
   if (!scoring) {
     return (
@@ -29,6 +69,12 @@ export default function ScoringDetailPage() {
       default: return 'bg-muted';
     }
   };
+
+  const rawMetrics = (Array.isArray(scoring.raw_metrics_schema) ? scoring.raw_metrics_schema : []) as unknown as Metric[];
+  const derivedMetrics = (Array.isArray(scoring.derived_metrics_schema) ? scoring.derived_metrics_schema : []) as unknown as Metric[];
+  const formulas = (Array.isArray(scoring.formulas) ? scoring.formulas : []) as unknown as Formula[];
+  const flags = (Array.isArray(scoring.flags) ? scoring.flags : []) as unknown as Flag[];
+  const thresholds = (Array.isArray(scoring.thresholds) ? scoring.thresholds : []) as unknown as Threshold[];
 
   return (
     <div className="space-y-6">
@@ -65,10 +111,10 @@ export default function ScoringDetailPage() {
       {/* Raw Metrics */}
       <Card>
         <CardHeader>
-          <CardTitle>Raw Metrics ({scoring.raw_metrics_schema.length})</CardTitle>
+          <CardTitle>Raw Metrics ({rawMetrics.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {scoring.raw_metrics_schema.length === 0 ? (
+          {rawMetrics.length === 0 ? (
             <p className="text-muted-foreground">No raw metrics defined.</p>
           ) : (
             <Table>
@@ -81,7 +127,7 @@ export default function ScoringDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scoring.raw_metrics_schema.map((metric) => (
+                {rawMetrics.map((metric) => (
                   <TableRow key={metric.metric_id}>
                     <TableCell className="font-mono text-xs">{metric.metric_id}</TableCell>
                     <TableCell>{metric.name}</TableCell>
@@ -98,10 +144,10 @@ export default function ScoringDetailPage() {
       {/* Derived Metrics */}
       <Card>
         <CardHeader>
-          <CardTitle>Derived Metrics ({scoring.derived_metrics_schema.length})</CardTitle>
+          <CardTitle>Derived Metrics ({derivedMetrics.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {scoring.derived_metrics_schema.length === 0 ? (
+          {derivedMetrics.length === 0 ? (
             <p className="text-muted-foreground">No derived metrics defined.</p>
           ) : (
             <Table>
@@ -114,7 +160,7 @@ export default function ScoringDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scoring.derived_metrics_schema.map((metric) => (
+                {derivedMetrics.map((metric) => (
                   <TableRow key={metric.metric_id}>
                     <TableCell className="font-mono text-xs">{metric.metric_id}</TableCell>
                     <TableCell>{metric.name}</TableCell>
@@ -131,10 +177,10 @@ export default function ScoringDetailPage() {
       {/* Formulas */}
       <Card>
         <CardHeader>
-          <CardTitle>Formulas ({scoring.formulas.length})</CardTitle>
+          <CardTitle>Formulas ({formulas.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {scoring.formulas.length === 0 ? (
+          {formulas.length === 0 ? (
             <p className="text-muted-foreground">No formulas defined.</p>
           ) : (
             <Table>
@@ -148,7 +194,7 @@ export default function ScoringDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scoring.formulas.map((formula) => (
+                {formulas.map((formula) => (
                   <TableRow key={formula.formula_id}>
                     <TableCell className="font-mono text-xs">{formula.formula_id}</TableCell>
                     <TableCell>{formula.name}</TableCell>
@@ -166,10 +212,10 @@ export default function ScoringDetailPage() {
       {/* Flags */}
       <Card>
         <CardHeader>
-          <CardTitle>Flags ({scoring.flags.length})</CardTitle>
+          <CardTitle>Flags ({flags.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {scoring.flags.length === 0 ? (
+          {flags.length === 0 ? (
             <p className="text-muted-foreground">No flags defined.</p>
           ) : (
             <Table>
@@ -182,7 +228,7 @@ export default function ScoringDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scoring.flags.map((flag) => (
+                {flags.map((flag) => (
                   <TableRow key={flag.flag_id}>
                     <TableCell className="font-mono text-xs">{flag.flag_id}</TableCell>
                     <TableCell>{flag.name}</TableCell>
@@ -201,10 +247,10 @@ export default function ScoringDetailPage() {
       {/* Thresholds */}
       <Card>
         <CardHeader>
-          <CardTitle>Thresholds ({scoring.thresholds.length})</CardTitle>
+          <CardTitle>Thresholds ({thresholds.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {scoring.thresholds.length === 0 ? (
+          {thresholds.length === 0 ? (
             <p className="text-muted-foreground">No thresholds defined.</p>
           ) : (
             <Table>
@@ -218,7 +264,7 @@ export default function ScoringDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scoring.thresholds.map((threshold) => (
+                {thresholds.map((threshold) => (
                   <TableRow key={threshold.threshold_id}>
                     <TableCell className="font-mono text-xs">{threshold.threshold_id}</TableCell>
                     <TableCell className="font-mono text-xs">{threshold.metric_id}</TableCell>
