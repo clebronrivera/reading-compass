@@ -203,7 +203,7 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     return result;
   }
 
-  // Fetch items (passages) from the bank
+  // Fetch existing forms from the bank
   const { data: forms, error: formsError } = await supabase
     .from('forms')
     .select('form_id')
@@ -213,7 +213,7 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     result.warnings.push(`Could not check existing forms: ${formsError.message}`);
   }
 
-  // Fetch items to check for approved content
+  // Fetch items to check for content
   const { data: items, error: itemsError } = await supabase
     .from('items')
     .select('*, forms!inner(content_bank_id)')
@@ -223,25 +223,38 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     result.warnings.push(`Could not fetch items: ${itemsError.message}`);
   }
 
-  // Check for approved passages
-  const approvedItems = (items || []).filter((item: ItemRow) => {
+  // Check for eligible content - items are eligible if:
+  // 1. For passage types: validation_status === 'approved'
+  // 2. For other item types (letter-sound, phoneme, word, etc.): items exist in a ready/in-progress bank
+  const eligibleItems = (items || []).filter((item: ItemRow) => {
     const payload = item.content_payload as Record<string, unknown>;
-    return payload?.validation_status === 'approved';
+    // Passage items require explicit approval
+    if (item.item_type === 'passage') {
+      return payload?.validation_status === 'approved';
+    }
+    // Non-passage items are eligible if they exist (bank status already checked)
+    return true;
   });
 
-  if (approvedItems.length === 0) {
-    result.warnings.push('No approved content found in bank. Forms cannot be generated until passages with validation_status=approved are added.');
+  // Additional check: if bank is empty or has no items, warn appropriately
+  const bankHasContent = targetBank.current_size > 0 || (items && items.length > 0);
+  
+  if (!bankHasContent) {
+    result.warnings.push(`Content bank "${targetBank.name}" is empty. Add items to generate forms.`);
+  } else if (eligibleItems.length === 0) {
+    // Has items but none are eligible (e.g., passages without approval)
+    result.warnings.push('No eligible content found. For passage items, ensure validation_status is set to "approved".');
   } else {
     // Group by grade_target for form generation
     const byGrade: Record<string, ItemRow[]> = {};
-    for (const item of approvedItems) {
+    for (const item of eligibleItems) {
       const payload = item.content_payload as Record<string, unknown>;
-      const grade = String(payload.grade_target || 'unknown');
+      const grade = String(payload.grade_target || payload.grade_level || 'unknown');
       if (!byGrade[grade]) byGrade[grade] = [];
       byGrade[grade].push(item);
     }
 
-    // Generate forms for each grade with approved passages
+    // Generate forms for each grade with eligible content
     for (const [grade, gradeItems] of Object.entries(byGrade)) {
       for (let i = 0; i < gradeItems.length; i++) {
         const item = gradeItems[i];
@@ -263,7 +276,7 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
           equivalence_set_id: (payload.equivalence_set_id as string) || null,
           status: 'draft',
           metadata: {
-            passage_id: String(payload.passage_id || ''),
+            passage_id: String(payload.passage_id || payload.item_id || ''),
             locked_word_token_order: payload.word_tokens as string[] || [],
             generated_at: new Date().toISOString(),
           },
