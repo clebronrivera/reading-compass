@@ -1,15 +1,25 @@
 import { useParams, Link } from 'react-router-dom';
-import { getContentBankById } from '@/data/contentBanks';
-import { getFormsByContentBank } from '@/data/forms';
+import { useContentBank } from '@/lib/api/contentBanks';
+import { useFormsByBank } from '@/lib/api/forms';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { ArrowLeft, Check, X } from 'lucide-react';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
 
 export default function ContentBankDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const bank = getContentBankById(id || '');
-  const forms = getFormsByContentBank(id || '');
+  const { data: bank, isLoading, error, refetch } = useContentBank(id || '');
+  const { data: forms = [] } = useFormsByBank(id || '');
+
+  if (isLoading) {
+    return <LoadingState title="Loading content bank..." />;
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to load content bank" error={error} onRetry={refetch} />;
+  }
 
   if (!bank) {
     return (
@@ -34,7 +44,7 @@ export default function ContentBankDetailPage() {
             <h1 className="text-2xl font-bold">{bank.name}</h1>
             <p className="font-mono text-muted-foreground">{bank.content_bank_id}</p>
           </div>
-          <StatusBadge status={bank.status} size="lg" />
+          <StatusBadge status={bank.status || 'empty'} size="lg" />
         </div>
       </div>
 
@@ -57,7 +67,7 @@ export default function ContentBankDetailPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Differentiation Keys</p>
-              <p>{bank.differentiation_keys.length > 0 ? bank.differentiation_keys.join(', ') : 'None'}</p>
+              <p>{(bank.differentiation_keys || []).length > 0 ? bank.differentiation_keys?.join(', ') : 'None'}</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -73,11 +83,11 @@ export default function ContentBankDetailPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Bank Size</p>
-              <p>{bank.current_size} / {bank.target_bank_size} items</p>
+              <p>{bank.current_size || 0} / {bank.target_bank_size || 0} items</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Status</p>
-              <StatusBadge status={bank.status} />
+              <StatusBadge status={bank.status || 'empty'} />
             </div>
           </div>
         </CardContent>
@@ -111,7 +121,7 @@ export default function ContentBankDetailPage() {
                     </TableCell>
                     <TableCell>{form.grade_or_level_tag}</TableCell>
                     <TableCell>{form.form_number}</TableCell>
-                    <TableCell><StatusBadge status={form.status} /></TableCell>
+                    <TableCell><StatusBadge status={form.status || 'draft'} /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>

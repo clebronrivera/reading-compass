@@ -1,12 +1,22 @@
 import { useParams, Link } from 'react-router-dom';
-import { getItemById } from '@/data/items';
+import { useItem } from '@/lib/api/items';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
 
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const item = getItemById(id || '');
+  const { data: item, isLoading, error, refetch } = useItem(id || '');
+
+  if (isLoading) {
+    return <LoadingState title="Loading item..." />;
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to load item" error={error} onRetry={refetch} />;
+  }
 
   if (!item) {
     return (
@@ -19,7 +29,10 @@ export default function ItemDetailPage() {
     );
   }
 
-  const payload = item.content_payload;
+  const payload = (item.content_payload as Record<string, unknown>) || {};
+  const scoringTags = item.scoring_tags || [];
+  const errorTypes = Array.isArray(payload.error_types) ? payload.error_types : [];
+  const choices = Array.isArray(payload.choices) ? payload.choices : [];
 
   return (
     <div className="space-y-6">
@@ -74,11 +87,11 @@ export default function ItemDetailPage() {
           <CardTitle>Scoring Tags</CardTitle>
         </CardHeader>
         <CardContent>
-          {item.scoring_tags.length === 0 ? (
+          {scoringTags.length === 0 ? (
             <p className="text-muted-foreground">No scoring tags.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {item.scoring_tags.map((tag) => (
+              {scoringTags.map((tag) => (
                 <Badge key={tag} variant="secondary">{tag}</Badge>
               ))}
             </div>
@@ -95,21 +108,21 @@ export default function ItemDetailPage() {
           {payload.stimulus && (
             <div>
               <p className="text-sm text-muted-foreground">Stimulus</p>
-              <p className="text-2xl font-bold">{payload.stimulus}</p>
+              <p className="text-2xl font-bold">{String(payload.stimulus)}</p>
             </div>
           )}
           {payload.text && (
             <div>
               <p className="text-sm text-muted-foreground">Text</p>
-              <p>{payload.text}</p>
+              <p>{String(payload.text)}</p>
             </div>
           )}
-          {payload.choices && payload.choices.length > 0 && (
+          {choices.length > 0 && (
             <div>
               <p className="text-sm text-muted-foreground">Choices</p>
               <ul className="list-disc list-inside">
-                {payload.choices.map((choice, i) => (
-                  <li key={i}>{choice}</li>
+                {choices.map((choice, i) => (
+                  <li key={i}>{String(choice)}</li>
                 ))}
               </ul>
             </div>
@@ -117,27 +130,27 @@ export default function ItemDetailPage() {
           {payload.correct_answer && (
             <div>
               <p className="text-sm text-muted-foreground">Correct Answer</p>
-              <p className="font-mono bg-muted p-2 rounded">{payload.correct_answer}</p>
+              <p className="font-mono bg-muted p-2 rounded">{String(payload.correct_answer)}</p>
             </div>
           )}
           {payload.rubric && (
             <div>
               <p className="text-sm text-muted-foreground">Rubric</p>
-              <p className="text-sm">{payload.rubric}</p>
+              <p className="text-sm">{String(payload.rubric)}</p>
             </div>
           )}
-          {payload.error_types && payload.error_types.length > 0 && (
+          {errorTypes.length > 0 && (
             <div>
               <p className="text-sm text-muted-foreground">Error Types</p>
               <div className="flex flex-wrap gap-2">
-                {payload.error_types.map((error) => (
-                  <Badge key={error} variant="outline">{error}</Badge>
+                {errorTypes.map((err) => (
+                  <Badge key={String(err)} variant="outline">{String(err)}</Badge>
                 ))}
               </div>
             </div>
           )}
           {/* Fallback for any other fields */}
-          {!payload.stimulus && !payload.text && !payload.choices && !payload.correct_answer && !payload.rubric && !payload.error_types && (
+          {!payload.stimulus && !payload.text && choices.length === 0 && !payload.correct_answer && !payload.rubric && errorTypes.length === 0 && (
             <pre className="text-xs bg-muted p-4 rounded overflow-auto">
               {JSON.stringify(payload, null, 2)}
             </pre>

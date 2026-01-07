@@ -1,14 +1,24 @@
 import { useParams, Link } from 'react-router-dom';
-import { getASRByVersionId } from '@/data/asrLibrary';
+import { useASRVersion } from '@/lib/api/asrVersions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft } from 'lucide-react';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
 
 export default function ASRDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const asr = getASRByVersionId(id || '');
+  const { data: asr, isLoading, error, refetch } = useASRVersion(id || '');
+
+  if (isLoading) {
+    return <LoadingState title="Loading ASR..." />;
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to load ASR" error={error} onRetry={refetch} />;
+  }
 
   if (!asr) {
     return (
@@ -21,6 +31,23 @@ export default function ASRDetailPage() {
     );
   }
 
+  // Parse section data safely
+  const sectionA = (asr.section_a as Record<string, unknown>) || {};
+  const sectionB = (asr.section_b as Record<string, unknown>) || {};
+  const sectionC = (asr.section_c as Record<string, unknown>) || {};
+  const sectionD = (asr.section_d as Record<string, unknown>) || {};
+  const sectionE = (asr.section_e as Record<string, unknown>) || {};
+  const sectionF = (asr.section_f as Record<string, unknown>) || {};
+  const sectionG = (asr.section_g as Record<string, unknown>) || {};
+  const sectionH = (asr.section_h as Record<string, unknown>) || {};
+  const sectionI = (asr.section_i as Record<string, unknown>) || {};
+  const sectionJ = (asr.section_j as Record<string, unknown>) || {};
+
+  const getArrayField = (obj: Record<string, unknown>, key: string): string[] => {
+    const val = obj[key];
+    return Array.isArray(val) ? val : [];
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -29,9 +56,9 @@ export default function ASRDetailPage() {
         </Link>
         <div className="flex items-center gap-2 mb-2">
           <Badge variant="outline">ASR</Badge>
-          <StatusBadge status={asr.section_a.status} />
+          <StatusBadge status={String(sectionA.status || 'draft')} />
         </div>
-        <h1 className="text-2xl font-bold">{asr.section_a.assessment_name}</h1>
+        <h1 className="text-2xl font-bold">{String(sectionA.assessment_name || asr.asr_version_id)}</h1>
         <p className="font-mono text-muted-foreground">{asr.asr_version_id}</p>
         <Link to={`/assessment/${asr.assessment_id}`} className="text-sm text-primary hover:underline">
           View Assessment →
@@ -39,24 +66,125 @@ export default function ASRDetailPage() {
       </div>
       
       <div className="flex gap-4 text-sm">
-        <span>Completeness: {asr.completeness_percent}%</span>
-        <span>Validation: <StatusBadge status={asr.validation_status} size="sm" /></span>
+        <span>Completeness: {asr.completeness_percent || 0}%</span>
+        <span>Validation: <StatusBadge status={asr.validation_status || 'incomplete'} size="sm" /></span>
       </div>
       
       <Tabs defaultValue="a">
         <TabsList className="flex-wrap h-auto">
           {['A','B','C','D','E','F','G','H','I','J'].map(s => <TabsTrigger key={s} value={s.toLowerCase()}>Section {s}</TabsTrigger>)}
         </TabsList>
-        <TabsContent value="a"><Card><CardHeader><CardTitle>Section A: Identification</CardTitle></CardHeader><CardContent className="space-y-2"><p><strong>ASR ID:</strong> {asr.section_a.asr_id}</p><p><strong>Version:</strong> {asr.section_a.version}</p><p><strong>Owner:</strong> {asr.section_a.owner}</p><p><strong>Last Updated:</strong> {asr.section_a.last_updated}</p></CardContent></Card></TabsContent>
-        <TabsContent value="b"><Card><CardHeader><CardTitle>Section B: Classification</CardTitle></CardHeader><CardContent className="space-y-2"><p><strong>Component:</strong> {asr.section_b.component}</p><p><strong>Subcomponent:</strong> {asr.section_b.subcomponent}</p><p><strong>Skill Focus:</strong> {asr.section_b.skill_focus}</p><p><strong>Grade Range:</strong> {asr.section_b.grade_range}</p><p><strong>Administration:</strong> {asr.section_b.administration_format}</p></CardContent></Card></TabsContent>
-        <TabsContent value="c"><Card><CardHeader><CardTitle>Section C: Purpose</CardTitle></CardHeader><CardContent className="space-y-2"><p><strong>Purpose:</strong> {asr.section_c.purpose}</p><p><strong>What it Measures:</strong> {asr.section_c.what_it_measures}</p><p><strong>Intended Use:</strong> {asr.section_c.intended_use}</p><p><strong>Not Designed For:</strong> {asr.section_c.not_designed_for}</p></CardContent></Card></TabsContent>
-        <TabsContent value="d"><Card><CardHeader><CardTitle>Section D: Content</CardTitle></CardHeader><CardContent className="space-y-2"><p><strong>Content Model:</strong> {asr.section_d.content_model}</p><p><strong>Item Types:</strong> {asr.section_d.item_types.join(', ')}</p><p><strong>Stimulus:</strong> {asr.section_d.stimulus_description}</p><p><strong>Response Format:</strong> {asr.section_d.response_format}</p></CardContent></Card></TabsContent>
-        <TabsContent value="e"><Card><CardHeader><CardTitle>Section E: Structure</CardTitle></CardHeader><CardContent className="space-y-2"><p><strong>Total Items:</strong> {asr.section_e.total_items}</p><p><strong>Timing:</strong> {asr.section_e.timing}</p><p><strong>Stopping Rule:</strong> {asr.section_e.stopping_rule}</p><p><strong>Materials:</strong> {asr.section_e.materials_required.join(', ')}</p></CardContent></Card></TabsContent>
-        <TabsContent value="f"><Card><CardHeader><CardTitle>Section F: Administration</CardTitle></CardHeader><CardContent className="space-y-2"><p><strong>Script:</strong> {asr.section_f.administration_script}</p><p><strong>Practice Items:</strong> {asr.section_f.practice_items}</p><p><strong>Prompts:</strong> {asr.section_f.prompts.join(' | ')}</p><p><strong>Supports:</strong> {asr.section_f.allowable_supports.join(', ')}</p></CardContent></Card></TabsContent>
-        <TabsContent value="g"><Card><CardHeader><CardTitle>Section G: Scoring</CardTitle></CardHeader><CardContent className="space-y-2"><p><strong>Method:</strong> {asr.section_g.scoring_method}</p><p><strong>Score Types:</strong> {asr.section_g.score_types.join(', ')}</p><p><strong>Error Coding:</strong> {asr.section_g.error_coding}</p><p><strong>Rubric:</strong> {asr.section_g.scoring_rubric}</p></CardContent></Card></TabsContent>
-        <TabsContent value="h"><Card><CardHeader><CardTitle>Section H: Metrics</CardTitle></CardHeader><CardContent className="space-y-2"><p><strong>Raw Metrics:</strong> {asr.section_h.raw_metrics.join(', ')}</p><p><strong>Derived:</strong> {asr.section_h.derived_metrics.join(', ')}</p><p><strong>Benchmarks:</strong> {asr.section_h.benchmark_status}</p><p><strong>Norm Ref:</strong> {asr.section_h.norm_reference}</p></CardContent></Card></TabsContent>
-        <TabsContent value="i"><Card><CardHeader><CardTitle>Section I: Forms</CardTitle></CardHeader><CardContent className="space-y-2"><p><strong>Available:</strong> {asr.section_i.forms_available.join(', ')}</p><p><strong>Equivalence:</strong> {asr.section_i.equivalence_sets}</p><p><strong>Differentiation:</strong> {asr.section_i.differentiation_keys.join(', ')}</p><p><strong>Notes:</strong> {asr.section_i.version_notes}</p></CardContent></Card></TabsContent>
-        <TabsContent value="j"><Card><CardHeader><CardTitle>Section J: Integration</CardTitle></CardHeader><CardContent className="space-y-2"><p><strong>Export Format:</strong> {asr.section_j.data_export_format}</p><p><strong>Integration:</strong> {asr.section_j.integration_notes}</p><p><strong>Dashboard:</strong> {asr.section_j.reporting_dashboard}</p><p><strong>Flags:</strong> {asr.section_j.flags_and_alerts}</p></CardContent></Card></TabsContent>
+        <TabsContent value="a">
+          <Card>
+            <CardHeader><CardTitle>Section A: Identification</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p><strong>ASR ID:</strong> {String(sectionA.asr_id || 'N/A')}</p>
+              <p><strong>Version:</strong> {String(sectionA.version || 'N/A')}</p>
+              <p><strong>Owner:</strong> {String(sectionA.owner || 'N/A')}</p>
+              <p><strong>Last Updated:</strong> {String(sectionA.last_updated || 'N/A')}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="b">
+          <Card>
+            <CardHeader><CardTitle>Section B: Classification</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p><strong>Component:</strong> {String(sectionB.component || 'N/A')}</p>
+              <p><strong>Subcomponent:</strong> {String(sectionB.subcomponent || 'N/A')}</p>
+              <p><strong>Skill Focus:</strong> {String(sectionB.skill_focus || 'N/A')}</p>
+              <p><strong>Grade Range:</strong> {String(sectionB.grade_range || 'N/A')}</p>
+              <p><strong>Administration:</strong> {String(sectionB.administration_format || 'N/A')}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="c">
+          <Card>
+            <CardHeader><CardTitle>Section C: Purpose</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p><strong>Purpose:</strong> {String(sectionC.purpose || 'N/A')}</p>
+              <p><strong>What it Measures:</strong> {String(sectionC.what_it_measures || 'N/A')}</p>
+              <p><strong>Intended Use:</strong> {String(sectionC.intended_use || 'N/A')}</p>
+              <p><strong>Not Designed For:</strong> {String(sectionC.not_designed_for || 'N/A')}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="d">
+          <Card>
+            <CardHeader><CardTitle>Section D: Content</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p><strong>Content Model:</strong> {String(sectionD.content_model || 'N/A')}</p>
+              <p><strong>Item Types:</strong> {getArrayField(sectionD, 'item_types').join(', ') || 'N/A'}</p>
+              <p><strong>Stimulus:</strong> {String(sectionD.stimulus_description || 'N/A')}</p>
+              <p><strong>Response Format:</strong> {String(sectionD.response_format || 'N/A')}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="e">
+          <Card>
+            <CardHeader><CardTitle>Section E: Structure</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p><strong>Total Items:</strong> {String(sectionE.total_items || 'N/A')}</p>
+              <p><strong>Timing:</strong> {String(sectionE.timing || 'N/A')}</p>
+              <p><strong>Stopping Rule:</strong> {String(sectionE.stopping_rule || 'N/A')}</p>
+              <p><strong>Materials:</strong> {getArrayField(sectionE, 'materials_required').join(', ') || 'N/A'}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="f">
+          <Card>
+            <CardHeader><CardTitle>Section F: Administration</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p><strong>Script:</strong> {String(sectionF.administration_script || 'N/A')}</p>
+              <p><strong>Practice Items:</strong> {String(sectionF.practice_items || 'N/A')}</p>
+              <p><strong>Prompts:</strong> {getArrayField(sectionF, 'prompts').join(' | ') || 'N/A'}</p>
+              <p><strong>Supports:</strong> {getArrayField(sectionF, 'allowable_supports').join(', ') || 'N/A'}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="g">
+          <Card>
+            <CardHeader><CardTitle>Section G: Scoring</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p><strong>Method:</strong> {String(sectionG.scoring_method || 'N/A')}</p>
+              <p><strong>Score Types:</strong> {getArrayField(sectionG, 'score_types').join(', ') || 'N/A'}</p>
+              <p><strong>Error Coding:</strong> {String(sectionG.error_coding || 'N/A')}</p>
+              <p><strong>Rubric:</strong> {String(sectionG.scoring_rubric || 'N/A')}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="h">
+          <Card>
+            <CardHeader><CardTitle>Section H: Metrics</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p><strong>Raw Metrics:</strong> {getArrayField(sectionH, 'raw_metrics').join(', ') || 'N/A'}</p>
+              <p><strong>Derived:</strong> {getArrayField(sectionH, 'derived_metrics').join(', ') || 'N/A'}</p>
+              <p><strong>Benchmarks:</strong> {String(sectionH.benchmark_status || 'N/A')}</p>
+              <p><strong>Norm Ref:</strong> {String(sectionH.norm_reference || 'N/A')}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="i">
+          <Card>
+            <CardHeader><CardTitle>Section I: Forms</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p><strong>Available:</strong> {getArrayField(sectionI, 'forms_available').join(', ') || 'N/A'}</p>
+              <p><strong>Equivalence:</strong> {String(sectionI.equivalence_sets || 'N/A')}</p>
+              <p><strong>Differentiation:</strong> {getArrayField(sectionI, 'differentiation_keys').join(', ') || 'N/A'}</p>
+              <p><strong>Notes:</strong> {String(sectionI.version_notes || 'N/A')}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="j">
+          <Card>
+            <CardHeader><CardTitle>Section J: Integration</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p><strong>Export Format:</strong> {String(sectionJ.data_export_format || 'N/A')}</p>
+              <p><strong>Integration:</strong> {String(sectionJ.integration_notes || 'N/A')}</p>
+              <p><strong>Dashboard:</strong> {String(sectionJ.reporting_dashboard || 'N/A')}</p>
+              <p><strong>Flags:</strong> {String(sectionJ.flags_and_alerts || 'N/A')}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );

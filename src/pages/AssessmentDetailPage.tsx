@@ -1,22 +1,32 @@
 import { useParams, Link } from 'react-router-dom';
-import { getAssessmentById } from '@/data/assessmentRegistry';
-import { getASRsByAssessmentId } from '@/data/asrLibrary';
-import { getContentBanksByAssessment } from '@/data/contentBanks';
-import { getFormsByAssessment } from '@/data/forms';
-import { getScoringOutputsByAssessment } from '@/data/scoringOutputs';
+import { useAssessment } from '@/lib/api/assessments';
+import { useASRVersionsByAssessment } from '@/lib/api/asrVersions';
+import { useContentBanksByAssessment } from '@/lib/api/contentBanks';
+import { useFormsByAssessment } from '@/lib/api/forms';
+import { useScoringOutputsByAssessment } from '@/lib/api/scoringOutputs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { COMPONENT_INFO } from '@/types/registry';
 import { ArrowLeft } from 'lucide-react';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
 
 export default function AssessmentDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const assessment = getAssessmentById(id || '');
-  const asrs = getASRsByAssessmentId(id || '');
-  const banks = getContentBanksByAssessment(id || '');
-  const forms = getFormsByAssessment(id || '');
-  const scoring = getScoringOutputsByAssessment(id || '');
+  const { data: assessment, isLoading, error, refetch } = useAssessment(id || '');
+  const { data: asrs = [] } = useASRVersionsByAssessment(id || '');
+  const { data: banks = [] } = useContentBanksByAssessment(id || '');
+  const { data: forms = [] } = useFormsByAssessment(id || '');
+  const { data: scoring = [] } = useScoringOutputsByAssessment(id || '');
+
+  if (isLoading) {
+    return <LoadingState title="Loading assessment..." />;
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to load assessment" error={error} onRetry={refetch} />;
+  }
 
   if (!assessment) {
     return (
@@ -29,6 +39,8 @@ export default function AssessmentDetailPage() {
     );
   }
 
+  const componentInfo = COMPONENT_INFO[assessment.component_code as keyof typeof COMPONENT_INFO];
+
   return (
     <div className="space-y-6">
       <div>
@@ -36,7 +48,7 @@ export default function AssessmentDetailPage() {
           <ArrowLeft className="h-4 w-4" /> Back to Registry
         </Link>
         <div className="flex items-center gap-2 mb-2">
-          <Badge variant="outline">{COMPONENT_INFO[assessment.component_code].name}</Badge>
+          <Badge variant="outline">{componentInfo?.name || assessment.component_code}</Badge>
           <StatusBadge status={assessment.status} />
         </div>
         <h1 className="text-2xl font-bold">{assessment.subcomponent_name}</h1>

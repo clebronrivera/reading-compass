@@ -1,16 +1,26 @@
 import { useParams, Link } from 'react-router-dom';
-import { getFormById } from '@/data/forms';
-import { getItemsByForm } from '@/data/items';
+import { useForm } from '@/lib/api/forms';
+import { useItemsByForm } from '@/lib/api/items';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { ArrowLeft } from 'lucide-react';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
 
 export default function FormDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const form = getFormById(id || '');
-  const items = getItemsByForm(id || '');
+  const { data: form, isLoading, error, refetch } = useForm(id || '');
+  const { data: items = [] } = useItemsByForm(id || '');
+
+  if (isLoading) {
+    return <LoadingState title="Loading form..." />;
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to load form" error={error} onRetry={refetch} />;
+  }
 
   if (!form) {
     return (
@@ -22,6 +32,8 @@ export default function FormDetailPage() {
       </div>
     );
   }
+
+  const metadata = (form.metadata as Record<string, unknown>) || {};
 
   return (
     <div className="space-y-6">
@@ -35,7 +47,7 @@ export default function FormDetailPage() {
             <h1 className="text-2xl font-bold">Form {form.form_number} — {form.grade_or_level_tag}</h1>
             <p className="font-mono text-muted-foreground">{form.form_id}</p>
           </div>
-          <StatusBadge status={form.status} size="lg" />
+          <StatusBadge status={form.status || 'draft'} size="lg" />
         </div>
       </div>
 
@@ -88,22 +100,22 @@ export default function FormDetailPage() {
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
             <p className="text-sm text-muted-foreground">Created Date</p>
-            <p>{form.metadata.created_date}</p>
+            <p>{String(metadata.created_date || form.created_at || 'N/A')}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Last Modified</p>
-            <p>{form.metadata.last_modified}</p>
+            <p>{String(metadata.last_modified || form.updated_at || 'N/A')}</p>
           </div>
-          {form.metadata.readability_level && (
+          {metadata.readability_level && (
             <div>
               <p className="text-sm text-muted-foreground">Readability Level</p>
-              <p>{form.metadata.readability_level}</p>
+              <p>{String(metadata.readability_level)}</p>
             </div>
           )}
-          {form.metadata.word_count && (
+          {metadata.word_count && (
             <div>
               <p className="text-sm text-muted-foreground">Word Count</p>
-              <p>{form.metadata.word_count}</p>
+              <p>{String(metadata.word_count)}</p>
             </div>
           )}
         </CardContent>
@@ -137,7 +149,7 @@ export default function FormDetailPage() {
                     </TableCell>
                     <TableCell>{item.sequence_number}</TableCell>
                     <TableCell><Badge variant="outline">{item.item_type}</Badge></TableCell>
-                    <TableCell className="text-xs">{item.scoring_tags.length} tags</TableCell>
+                    <TableCell className="text-xs">{(item.scoring_tags || []).length} tags</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -1,14 +1,31 @@
-import { getAllContentBanks } from '@/data/contentBanks';
+import { useContentBanks } from '@/lib/api/contentBanks';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Link } from 'react-router-dom';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export default function ContentBanksPage() {
-  const banks = getAllContentBanks();
+  const { data: banks = [], isLoading, error, refetch } = useContentBanks();
+
+  if (isLoading) {
+    return <LoadingState title="Loading content banks..." />;
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to load content banks" error={error} onRetry={refetch} />;
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Content Banks</h1>
-      {banks.length === 0 ? <p className="text-muted-foreground">No content banks created yet.</p> : (
+      {banks.length === 0 ? (
+        <EmptyState 
+          title="No content banks" 
+          description="No content banks have been created yet."
+        />
+      ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -35,8 +52,8 @@ export default function ContentBanksPage() {
                   </Link>
                 </TableCell>
                 <TableCell>{b.equivalence_set_required ? 'Yes' : 'No'}</TableCell>
-                <TableCell>{b.current_size}/{b.target_bank_size}</TableCell>
-                <TableCell><StatusBadge status={b.status} /></TableCell>
+                <TableCell>{b.current_size || 0}/{b.target_bank_size || 0}</TableCell>
+                <TableCell><StatusBadge status={b.status || 'empty'} /></TableCell>
               </TableRow>
             ))}
           </TableBody>
