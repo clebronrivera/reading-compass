@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { ASRVersionRow, ASRVersionInsert, ASRVersionUpdate } from '@/types/database';
 import { assessmentKeys } from './assessments';
+import { canActivateASR, formatGateError } from '@/lib/activationGates';
 
 // Query keys
 export const asrVersionKeys = {
@@ -83,12 +84,31 @@ export function useCreateASRVersion() {
   });
 }
 
-// Update ASR version
+// Update ASR version with activation gate enforcement
 export function useUpdateASRVersion() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: ASRVersionUpdate }) => {
+      // If trying to set validation_status to 'valid', check gate
+      if (updates.validation_status === 'valid') {
+        // Fetch current ASR to get full state
+        const { data: currentASR, error: fetchError } = await supabase
+          .from('asr_versions')
+          .select('*')
+          .eq('asr_version_id', id)
+          .single();
+        if (fetchError) throw fetchError;
+
+        // Merge current with updates for gate check
+        const mergedASR = { ...currentASR, ...updates };
+        const gateResult = canActivateASR(mergedASR);
+
+        if (!gateResult.allowed) {
+          throw new Error(formatGateError(gateResult));
+        }
+      }
+
       const { data, error } = await supabase
         .from('asr_versions')
         .update(updates)
