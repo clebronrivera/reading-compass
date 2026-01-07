@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, X, Clock, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import { useItemsByForm } from '@/lib/api/items';
 import { isValidRouteId } from '@/lib/routeValidation';
 import { toast } from 'sonner';
 import type { ItemContent } from '@/types/database';
+import { ORFRunner } from '@/components/fluency/ORFRunner';
+import type { ORFPassageContent } from '@/types/orf';
 
 export default function SessionRunPage() {
   const { id } = useParams<{ id: string }>();
@@ -165,6 +167,30 @@ export default function SessionRunPage() {
 
   if (!items || items.length === 0) {
     return <ErrorState title="No items found for this form" />;
+  }
+
+  // Detect ORF session and extract word tokens
+  const isORFSession = session.assessment_id === 'FL-ORF';
+  const passageContent = currentItem?.content_payload as unknown as ORFPassageContent | undefined;
+  const wordTokens = useMemo(() => {
+    if (!passageContent) return [];
+    // Use existing word_tokens if available, otherwise tokenize from stimulus/text
+    if (passageContent.word_tokens?.length) {
+      return passageContent.word_tokens;
+    }
+    const text = passageContent.stimulus || (passageContent as unknown as ItemContent)?.text || '';
+    return text.split(/\s+/).filter(Boolean);
+  }, [passageContent]);
+
+  // Route to ORF Runner for FL-ORF sessions with word tokens
+  if (isORFSession && wordTokens.length > 0 && currentItem) {
+    return (
+      <ORFRunner 
+        session={session} 
+        item={currentItem} 
+        wordTokens={wordTokens} 
+      />
+    );
   }
 
   const content = currentItem?.content_payload as ItemContent;

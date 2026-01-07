@@ -342,7 +342,11 @@ export type Database = {
       }
       session_responses: {
         Row: {
+          computed_scores: Json | null
           created_at: string | null
+          discontinue_flag: boolean | null
+          discontinue_reason: string | null
+          elapsed_seconds: number | null
           error_tags: string[] | null
           is_correct: boolean | null
           item_id: string
@@ -351,9 +355,14 @@ export type Database = {
           response_time_ms: number | null
           sequence_number: number
           session_id: string
+          token_state_map: Json | null
         }
         Insert: {
+          computed_scores?: Json | null
           created_at?: string | null
+          discontinue_flag?: boolean | null
+          discontinue_reason?: string | null
+          elapsed_seconds?: number | null
           error_tags?: string[] | null
           is_correct?: boolean | null
           item_id: string
@@ -362,9 +371,14 @@ export type Database = {
           response_time_ms?: number | null
           sequence_number: number
           session_id: string
+          token_state_map?: Json | null
         }
         Update: {
+          computed_scores?: Json | null
           created_at?: string | null
+          discontinue_flag?: boolean | null
+          discontinue_reason?: string | null
+          elapsed_seconds?: number | null
           error_tags?: string[] | null
           is_correct?: boolean | null
           item_id?: string
@@ -373,6 +387,7 @@ export type Database = {
           response_time_ms?: number | null
           sequence_number?: number
           session_id?: string
+          token_state_map?: Json | null
         }
         Relationships: [
           {
