@@ -57,6 +57,21 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Component area colors
+        component: {
+          pa: "hsl(var(--component-pa))",
+          ph: "hsl(var(--component-ph))",
+          fl: "hsl(var(--component-fl))",
+          vo: "hsl(var(--component-vo))",
+          rc: "hsl(var(--component-rc))",
+        },
+        // Status colors
+        status: {
+          stub: "hsl(var(--status-stub))",
+          draft: "hsl(var(--status-draft))",
+          active: "hsl(var(--status-active))",
+          deprecated: "hsl(var(--status-deprecated))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
