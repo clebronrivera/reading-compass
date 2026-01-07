@@ -17,6 +17,7 @@ import type { ItemContent } from '@/types/database';
 import { ORFRunner } from '@/components/fluency/ORFRunner';
 import { OnsetRimeRunner } from '@/components/phonological/OnsetRimeRunner';
 import { RhymeRunner } from '@/components/phonological/RhymeRunner';
+import { SyllableRunner } from '@/components/phonological/SyllableRunner';
 import type { ORFPassageContent } from '@/types/orf';
 
 export default function SessionRunPage() {
@@ -209,6 +210,16 @@ export default function SessionRunPage() {
   if (session?.assessment_id === 'PA-RHYM' && items) {
     return (
       <RhymeRunner 
+        session={session} 
+        items={items} 
+      />
+    );
+  }
+
+  // Route to Syllable Runner for PA-SYLS sessions
+  if (session?.assessment_id === 'PA-SYLS' && items) {
+    return (
+      <SyllableRunner 
         session={session} 
         items={items} 
       />

@@ -62,7 +62,7 @@ export default function SessionStudentPage() {
 
   // Detect assessment type for specialized displays
   const isORFSession = session.assessment_id === 'FL-ORF';
-  const isBlankListeningSession = ['PA-OONS', 'PA-RHYM'].includes(session.assessment_id);
+  const isBlankListeningSession = ['PA-OONS', 'PA-RHYM', 'PA-SYLS'].includes(session.assessment_id);
 
   // Show completion message if session is done
   if (session.status === 'completed') {
