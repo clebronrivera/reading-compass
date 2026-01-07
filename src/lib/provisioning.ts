@@ -164,7 +164,14 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
       const stimulusPool = sectionD.stimulus_pool;
       const sectionIData = (asr.section_i as ASRSectionI) || {};
       const targetFormsPerLevel = sectionIData.target_forms_per_level || 2;
-      const itemType = sectionD.item_type || 'stimulus_token';
+      // Map ASR item_type to valid DB item types: passage, letter-sound, phoneme, word, sentence, multiple-choice, constructed-response
+      const itemTypeMap: Record<string, string> = {
+        'single_printed_letter': 'letter-sound',
+        'stimulus_token': 'letter-sound',
+        'letter': 'letter-sound',
+      };
+      const rawItemType = sectionD.item_type || 'letter-sound';
+      const itemType = itemTypeMap[rawItemType] || rawItemType;
       
       // Parse stimulus_rules to extract item count per form (default 100 for letter naming)
       let itemsPerForm = 100;
