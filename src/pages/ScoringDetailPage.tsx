@@ -17,18 +17,16 @@ interface Metric {
 }
 
 interface Formula {
-  formula_id: string;
-  name: string;
-  expression: string;
-  inputs: string[];
-  output: string;
+  output_metric: string;
+  formula: string;
+  description?: string;
 }
 
 interface Flag {
   flag_id: string;
-  name: string;
   condition: string;
   severity: string;
+  message?: string;
 }
 
 interface Threshold {
@@ -193,21 +191,17 @@ export default function ScoringDetailPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Formula ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Expression</TableHead>
-                  <TableHead>Inputs</TableHead>
-                  <TableHead>Output</TableHead>
+                  <TableHead>Output Metric</TableHead>
+                  <TableHead>Formula</TableHead>
+                  <TableHead>Description</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {formulas.map((formula) => (
-                  <TableRow key={formula.formula_id}>
-                    <TableCell className="font-mono text-xs">{formula.formula_id}</TableCell>
-                    <TableCell>{formula.name}</TableCell>
-                    <TableCell className="font-mono text-xs">{formula.expression}</TableCell>
-                    <TableCell className="text-xs">{formula.inputs.join(', ')}</TableCell>
-                    <TableCell className="font-mono text-xs">{formula.output}</TableCell>
+                {formulas.map((formula, idx) => (
+                  <TableRow key={formula.output_metric || idx}>
+                    <TableCell className="font-mono text-xs">{formula.output_metric}</TableCell>
+                    <TableCell className="font-mono text-xs">{formula.formula}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formula.description || '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -229,8 +223,8 @@ export default function ScoringDetailPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Flag ID</TableHead>
-                  <TableHead>Name</TableHead>
                   <TableHead>Condition</TableHead>
+                  <TableHead>Message</TableHead>
                   <TableHead>Severity</TableHead>
                 </TableRow>
               </TableHeader>
@@ -238,8 +232,8 @@ export default function ScoringDetailPage() {
                 {flags.map((flag) => (
                   <TableRow key={flag.flag_id}>
                     <TableCell className="font-mono text-xs">{flag.flag_id}</TableCell>
-                    <TableCell>{flag.name}</TableCell>
                     <TableCell className="font-mono text-xs">{flag.condition}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{flag.message || '-'}</TableCell>
                     <TableCell>
                       <Badge className={getSeverityClass(flag.severity)}>{flag.severity}</Badge>
                     </TableCell>
