@@ -19,6 +19,10 @@ import ContentBankDetailPage from "./pages/ContentBankDetailPage";
 import FormDetailPage from "./pages/FormDetailPage";
 import ItemDetailPage from "./pages/ItemDetailPage";
 import ScoringDetailPage from "./pages/ScoringDetailPage";
+import SessionsPage from "./pages/SessionsPage";
+import NewSessionPage from "./pages/NewSessionPage";
+import SessionRunPage from "./pages/SessionRunPage";
+import SessionStudentPage from "./pages/SessionStudentPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -55,6 +59,10 @@ const App = () => (
                     <Route path="/forms/:id" element={<FormDetailPage />} />
                     <Route path="/items/:id" element={<ItemDetailPage />} />
                     <Route path="/scoring/:id" element={<ScoringDetailPage />} />
+                    <Route path="/sessions" element={<SessionsPage />} />
+                    <Route path="/sessions/new" element={<NewSessionPage />} />
+                    <Route path="/sessions/:id/run" element={<SessionRunPage />} />
+                    <Route path="/sessions/:id/student" element={<SessionStudentPage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </MainLayout>

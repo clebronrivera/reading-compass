@@ -22,6 +22,7 @@ import {
   Calculator,
   BookOpen,
   ChevronDown,
+  Play,
 } from 'lucide-react';
 import { COMPONENT_INFO } from '@/types/registry';
 import { getComponentDotClass, COMPONENT_CODES, type ComponentCode } from '@/lib/componentColors';
@@ -39,6 +40,7 @@ const libraryItems = [
   { title: 'Forms', url: '/forms', icon: FileBox },
   { title: 'Items', url: '/items', icon: LayoutList },
   { title: 'Scoring Outputs', url: '/scoring', icon: Calculator },
+  { title: 'Sessions', url: '/sessions', icon: Play },
 ];
 
 export function AppSidebar() {
