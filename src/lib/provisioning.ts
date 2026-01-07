@@ -16,16 +16,26 @@ export interface ProvisioningResult {
   };
 }
 
+interface MetricObject {
+  metric_id?: string;
+  name?: string;
+  type?: string;
+  range?: string;
+  description?: string;
+}
+
 interface ASRSectionG {
   scoring_method?: string;
   score_types?: string[];
   error_coding?: string[] | string;
   scoring_rubric?: string;
+  raw_metrics?: (string | MetricObject)[];
+  derived_metrics?: (string | MetricObject)[];
 }
 
 interface ASRSectionH {
-  raw_metrics?: string[];
-  derived_metrics?: string[];
+  raw_metrics?: (string | MetricObject)[];
+  derived_metrics?: (string | MetricObject)[];
   benchmark_status?: string;
   norm_reference?: string;
 }
@@ -144,25 +154,37 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     const sectionG = (asr.section_g as ASRSectionG) || {};
     const sectionH = (asr.section_h as ASRSectionH) || {};
 
-    const rawMetricsArray = Array.isArray(sectionH.raw_metrics) ? sectionH.raw_metrics : [];
-    const rawMetrics = rawMetricsArray
-      .filter((m): m is string => typeof m === 'string' && m.length > 0)
-      .map((m: string) => ({
-        metric_id: m.toLowerCase().replace(/\s+/g, '_'),
-        name: m,
-        type: 'number',
-        description: `Raw metric: ${m}`,
-      }));
+    // Helper to normalize metrics from either strings or objects
+    const normalizeMetrics = (metricsArray: (string | MetricObject)[], metricType: string) => {
+      return metricsArray.map((m) => {
+        if (typeof m === 'string' && m.length > 0) {
+          return {
+            metric_id: m.toLowerCase().replace(/\s+/g, '_'),
+            name: m,
+            type: 'number',
+            description: `${metricType}: ${m}`,
+          };
+        } else if (typeof m === 'object' && m !== null) {
+          const obj = m as MetricObject;
+          return {
+            metric_id: obj.metric_id || (obj.name || 'unknown').toLowerCase().replace(/\s+/g, '_'),
+            name: obj.name || obj.metric_id || 'Unknown Metric',
+            type: obj.type || 'number',
+            description: obj.description || `${metricType}: ${obj.name || obj.metric_id}`,
+          };
+        }
+        return null;
+      }).filter((m): m is NonNullable<typeof m> => m !== null);
+    };
 
-    const derivedMetricsArray = Array.isArray(sectionH.derived_metrics) ? sectionH.derived_metrics : [];
-    const derivedMetrics = derivedMetricsArray
-      .filter((m): m is string => typeof m === 'string' && m.length > 0)
-      .map((m: string) => ({
-        metric_id: m.toLowerCase().replace(/\s+/g, '_'),
-        name: m,
-        type: 'number',
-        description: `Derived metric: ${m}`,
-      }));
+    // Check section_g first (some ASRs store metrics there), then fall back to section_h
+    const rawMetricsSource = (sectionG as { raw_metrics?: (string | MetricObject)[] }).raw_metrics 
+      || sectionH.raw_metrics || [];
+    const derivedMetricsSource = (sectionG as { derived_metrics?: (string | MetricObject)[] }).derived_metrics 
+      || sectionH.derived_metrics || [];
+
+    const rawMetrics = normalizeMetrics(Array.isArray(rawMetricsSource) ? rawMetricsSource : [], 'Raw metric');
+    const derivedMetrics = normalizeMetrics(Array.isArray(derivedMetricsSource) ? derivedMetricsSource : [], 'Derived metric');
 
     const errorCoding = Array.isArray(sectionG.error_coding) 
       ? sectionG.error_coding.filter((e): e is string => typeof e === 'string')
