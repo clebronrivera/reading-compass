@@ -15,6 +15,7 @@ import { isValidRouteId } from '@/lib/routeValidation';
 import { toast } from 'sonner';
 import type { ItemContent } from '@/types/database';
 import { ORFRunner } from '@/components/fluency/ORFRunner';
+import { OnsetRimeRunner } from '@/components/phonological/OnsetRimeRunner';
 import type { ORFPassageContent } from '@/types/orf';
 
 export default function SessionRunPage() {
@@ -189,6 +190,16 @@ export default function SessionRunPage() {
         session={session} 
         item={currentItem} 
         wordTokens={wordTokens} 
+      />
+    );
+  }
+
+  // Route to Onset-Rime Runner for PA-OONS sessions
+  if (session?.assessment_id === 'PA-OONS' && items) {
+    return (
+      <OnsetRimeRunner 
+        session={session} 
+        items={items} 
       />
     );
   }

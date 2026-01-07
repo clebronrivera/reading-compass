@@ -312,6 +312,7 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
         'spoken_prompt_word': 'phoneme',
         'phoneme_segment': 'phoneme',
         'single_printed_letter': 'letter-name',
+        'spoken_onset_rime_pair': 'phoneme', // Onset-rime blending uses phoneme type
       };
       const rawItemType = sectionD.item_type || 'phoneme';
       const itemType = itemTypeMap[rawItemType] || rawItemType;
@@ -378,7 +379,7 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
             ...sample, // Include all sample item fields (prompt_word, target_phonemes, etc.)
             position: index + 1,
           },
-          scoring_tags: sample.scoring_tags || ['correct', 'incorrect', 'partial'],
+          scoring_tags: sample.scoring_tags || ['correct', 'incorrect', 'no_response'],
         }));
 
         const { error: itemsError } = await supabase
