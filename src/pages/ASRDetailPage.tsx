@@ -23,10 +23,11 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 
 const VALIDATION_STATUS_OPTIONS = ['incomplete', 'needs-review', 'valid'] as const;
+type ValidationStatus = typeof VALIDATION_STATUS_OPTIONS[number];
 
 export default function ASRDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<ValidationStatus | null>(null);
   const [showValidateDialog, setShowValidateDialog] = useState(false);
 
   // Validate route param before any queries
@@ -37,14 +38,10 @@ export default function ASRDetailPage() {
   const { data: asr, isLoading, error, refetch } = useASRVersion(id);
   const updateASR = useUpdateASRVersion();
 
-  // Get the effective status for display and selection
-  const effectiveStatus = selectedStatus ?? asr?.validation_status ?? 'incomplete';
-  const hasStatusChanged = selectedStatus !== null && selectedStatus !== asr?.validation_status;
-
-  // Check if "valid" can be selected (100% complete)
+  // canSelectValid computed early for UI disabling (asr may be null during load)
   const canSelectValid = (asr?.completeness_percent ?? 0) === 100;
 
-  const handleStatusChange = (value: string) => {
+  const handleStatusChange = (value: ValidationStatus) => {
     setSelectedStatus(value);
   };
 
@@ -96,6 +93,10 @@ export default function ASRDetailPage() {
       </div>
     );
   }
+
+  // Compute effective status after we know asr exists
+  const effectiveStatus = selectedStatus ?? (asr.validation_status as ValidationStatus) ?? 'incomplete';
+  const hasStatusChanged = selectedStatus !== null && selectedStatus !== asr.validation_status;
 
   // Parse section data safely
   const sectionA = (asr.section_a as Record<string, unknown>) || {};
@@ -175,7 +176,7 @@ export default function ASRDetailPage() {
               <Button
                 size="sm"
                 onClick={handleSaveStatus}
-                disabled={!hasStatusChanged || updateASR.isPending}
+                disabled={!hasStatusChanged || updateASR.isPending || (selectedStatus === 'valid' && !canSelectValid)}
               >
                 {updateASR.isPending ? (
                   <>
