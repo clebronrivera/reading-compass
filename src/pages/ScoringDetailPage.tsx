@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useScoringOutput } from '@/lib/api/scoringOutputs';
+import { isValidRouteId } from '@/lib/routeValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +41,13 @@ interface Threshold {
 
 export default function ScoringDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: scoring, isLoading, error, refetch } = useScoringOutput(id || '');
+
+  // Validate route param before any queries
+  if (!isValidRouteId(id)) {
+    return <ErrorState title="Invalid Route" error="Invalid scoring model ID in URL" />;
+  }
+
+  const { data: scoring, isLoading, error, refetch } = useScoringOutput(id);
 
   if (isLoading) {
     return <LoadingState title="Loading scoring output..." />;

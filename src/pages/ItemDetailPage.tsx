@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useItem } from '@/lib/api/items';
+import { isValidRouteId } from '@/lib/routeValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
@@ -8,7 +9,13 @@ import { ErrorState } from '@/components/ui/error-state';
 
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: item, isLoading, error, refetch } = useItem(id || '');
+
+  // Validate route param before any queries
+  if (!isValidRouteId(id)) {
+    return <ErrorState title="Invalid Route" error="Invalid item ID in URL" />;
+  }
+
+  const { data: item, isLoading, error, refetch } = useItem(id);
 
   if (isLoading) {
     return <LoadingState title="Loading item..." />;
