@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { ASRVersionRow, ASRVersionInsert, ASRVersionUpdate } from '@/types/database';
 import { assessmentKeys } from './assessments';
 import { canActivateASR, formatGateError } from '@/lib/activationGates';
+import { toast } from '@/hooks/use-toast';
 
 // Query keys
 export const asrVersionKeys = {
@@ -122,6 +123,17 @@ export function useUpdateASRVersion() {
       queryClient.invalidateQueries({ queryKey: asrVersionKeys.all });
       queryClient.invalidateQueries({ queryKey: asrVersionKeys.detail(data.asr_version_id) });
       queryClient.invalidateQueries({ queryKey: assessmentKeys.detail(data.assessment_id) });
+      toast({
+        title: 'ASR updated',
+        description: `${data.asr_version_id} has been updated successfully.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Cannot update ASR',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 }

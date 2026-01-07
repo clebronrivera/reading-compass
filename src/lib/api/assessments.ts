@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { AssessmentRow, AssessmentInsert, AssessmentUpdate, ComponentCode } from '@/types/database';
 import { canActivateAssessment, formatGateError } from '@/lib/activationGates';
+import { toast } from '@/hooks/use-toast';
 
 // Query keys
 export const assessmentKeys = {
@@ -123,6 +124,17 @@ export function useUpdateAssessment() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: assessmentKeys.all });
       queryClient.invalidateQueries({ queryKey: assessmentKeys.detail(data.assessment_id) });
+      toast({
+        title: 'Assessment updated',
+        description: `${data.assessment_id} has been updated successfully.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Cannot update assessment',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 }
