@@ -27,6 +27,7 @@ export const asrLibrary: ASRVersion[] = [
       not_designed_for: 'Advanced phonics patterns, digraphs, or blends assessment',
     },
     section_d: {
+      generation_source: 'stimulus_pool',
       content_model: 'Fixed Set',
       item_types: ['Letter identification (uppercase)', 'Letter identification (lowercase)', 'Letter-sound production'],
       stimulus_description: 'Individual letters presented on cards or screen in randomized order',
