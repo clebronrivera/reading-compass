@@ -44,10 +44,16 @@ interface ASRSectionH {
 type GenerationSource = 'stimulus_pool' | 'sample_items' | 'external_import';
 
 interface SampleItem {
-  stimulus: string;
+  stimulus?: string;
   expected_response?: string;
   item_type?: string;
   scoring_tags?: string[];
+  // Extended fields for spoken prompt items (e.g., phoneme segmentation)
+  prompt_word?: string;
+  target_phonemes?: string[];
+  phoneme_count?: number;
+  difficulty?: string;
+  [key: string]: unknown; // Allow additional arbitrary fields
 }
 
 interface ASRSectionD {
@@ -61,6 +67,9 @@ interface ASRSectionD {
   presentation_unit?: string;
   runtime_randomization_allowed?: boolean;
   persist_item_order?: boolean;
+  // Extended config for sample_items generation
+  target_forms_per_level?: number;
+  items_per_form?: number;
 }
 
 interface ASRSectionI {
@@ -260,6 +269,114 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
             position: index + 1,
           },
           scoring_tags: ['letter_correct', 'letter_incorrect'],
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('items')
+          .insert(itemInserts);
+
+        if (itemsError) {
+          result.errors.push(`Failed to create items for ${formId}: ${itemsError.message}`);
+        }
+      }
+
+      // Update bank size
+      const totalItems = targetFormsPerLevel * itemsPerForm;
+      await supabase
+        .from('content_banks')
+        .update({ 
+          current_size: totalItems,
+          status: 'ready',
+        })
+        .eq('content_bank_id', targetBank.content_bank_id);
+    }
+  }
+
+  // Handle sample_items generation
+  if (generationSource === 'sample_items' && sectionD.sample_items && Array.isArray(sectionD.sample_items) && sectionD.sample_items.length > 0 && targetBank) {
+    // Check if items already exist for this bank
+    const { data: existingForms } = await supabase
+      .from('forms')
+      .select('form_id')
+      .eq('content_bank_id', targetBank.content_bank_id);
+
+    if (!existingForms || existingForms.length === 0) {
+      const sampleItems = sectionD.sample_items;
+      const targetFormsPerLevel = sectionD.target_forms_per_level || 2;
+      const itemsPerForm = sectionD.items_per_form || 20;
+      
+      // Map ASR item_type to valid DB item types
+      const itemTypeMap: Record<string, string> = {
+        'spoken_prompt_word': 'phoneme',
+        'phoneme_segment': 'phoneme',
+        'single_printed_letter': 'letter-name',
+      };
+      const rawItemType = sectionD.item_type || 'phoneme';
+      const itemType = itemTypeMap[rawItemType] || rawItemType;
+
+      // Shuffle function
+      const shuffleArray = <T>(arr: T[]): T[] => {
+        const copy = [...arr];
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+      };
+
+      // Create forms with shuffled items from sample_items pool
+      for (let formNum = 1; formNum <= targetFormsPerLevel; formNum++) {
+        const formId = `${assessmentId}.form${String(formNum).padStart(2, '0')}`;
+        
+        // Shuffle and take itemsPerForm items (or cycle if pool is smaller)
+        let selectedItems: SampleItem[] = [];
+        if (sampleItems.length >= itemsPerForm) {
+          selectedItems = shuffleArray(sampleItems).slice(0, itemsPerForm);
+        } else {
+          // Cycle through pool if not enough items
+          while (selectedItems.length < itemsPerForm) {
+            selectedItems.push(...shuffleArray(sampleItems));
+          }
+          selectedItems = selectedItems.slice(0, itemsPerForm);
+        }
+        
+        // Create the form
+        const { data: newForm, error: formError } = await supabase
+          .from('forms')
+          .insert({
+            form_id: formId,
+            content_bank_id: targetBank.content_bank_id,
+            assessment_id: assessmentId,
+            form_number: formNum,
+            grade_or_level_tag: 'K-1', // PSF is typically K-1
+            status: 'draft',
+            metadata: {
+              item_count: itemsPerForm,
+              sample_pool_size: sampleItems.length,
+              generated_at: new Date().toISOString(),
+            },
+          })
+          .select()
+          .single();
+
+        if (formError) {
+          result.errors.push(`Failed to create form ${formId}: ${formError.message}`);
+          continue;
+        }
+
+        result.created.forms.push(newForm as FormRow);
+
+        // Create items for this form
+        const itemInserts = selectedItems.map((sample, index) => ({
+          item_id: `${formId}.item${String(index + 1).padStart(3, '0')}`,
+          form_id: formId,
+          item_type: itemType,
+          sequence_number: index + 1,
+          content_payload: {
+            ...sample, // Include all sample item fields (prompt_word, target_phonemes, etc.)
+            position: index + 1,
+          },
+          scoring_tags: sample.scoring_tags || ['correct', 'incorrect', 'partial'],
         }));
 
         const { error: itemsError } = await supabase
