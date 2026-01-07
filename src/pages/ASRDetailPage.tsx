@@ -1,16 +1,33 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useASRVersion } from '@/lib/api/asrVersions';
+import { useASRVersion, useUpdateASRVersion } from '@/lib/api/asrVersions';
 import { isValidRouteId } from '@/lib/routeValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 
+const VALIDATION_STATUS_OPTIONS = ['incomplete', 'needs-review', 'valid'] as const;
+
 export default function ASRDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [showValidateDialog, setShowValidateDialog] = useState(false);
 
   // Validate route param before any queries
   if (!isValidRouteId(id)) {
@@ -18,6 +35,48 @@ export default function ASRDetailPage() {
   }
 
   const { data: asr, isLoading, error, refetch } = useASRVersion(id);
+  const updateASR = useUpdateASRVersion();
+
+  // Get the effective status for display and selection
+  const effectiveStatus = selectedStatus ?? asr?.validation_status ?? 'incomplete';
+  const hasStatusChanged = selectedStatus !== null && selectedStatus !== asr?.validation_status;
+
+  // Check if "valid" can be selected (100% complete)
+  const canSelectValid = (asr?.completeness_percent ?? 0) === 100;
+
+  const handleStatusChange = (value: string) => {
+    setSelectedStatus(value);
+  };
+
+  const handleSaveStatus = () => {
+    if (!asr || !selectedStatus) return;
+
+    // If validating, show confirmation dialog
+    if (selectedStatus === 'valid' && asr.validation_status !== 'valid') {
+      setShowValidateDialog(true);
+      return;
+    }
+
+    // Otherwise, update directly
+    performUpdate();
+  };
+
+  const performUpdate = () => {
+    if (!asr || !selectedStatus) return;
+    updateASR.mutate(
+      { id: asr.asr_version_id, updates: { validation_status: selectedStatus } },
+      {
+        onSuccess: () => {
+          setSelectedStatus(null); // Reset to track from server state
+        },
+      }
+    );
+  };
+
+  const handleConfirmValidate = () => {
+    setShowValidateDialog(false);
+    performUpdate();
+  };
 
   if (isLoading) {
     return <LoadingState title="Loading ASR..." />;
@@ -71,11 +130,71 @@ export default function ASRDetailPage() {
           View Assessment →
         </Link>
       </div>
-      
-      <div className="flex gap-4 text-sm">
-        <span>Completeness: {asr.completeness_percent || 0}%</span>
-        <span>Validation: <StatusBadge status={asr.validation_status || 'incomplete'} size="sm" /></span>
-      </div>
+
+      {/* Completeness and Validation Status Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>ASR Status</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-6">
+            <div>
+              <p className="text-sm text-muted-foreground">Completeness</p>
+              <p className="text-lg font-semibold">{asr.completeness_percent || 0}%</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Current Validation</p>
+              <StatusBadge status={asr.validation_status || 'incomplete'} />
+            </div>
+          </div>
+
+          {/* Validation Status Change UI */}
+          <div className="pt-4 border-t">
+            <p className="text-sm text-muted-foreground mb-2">Update Validation Status</p>
+            <div className="flex items-center gap-2">
+              <Select 
+                value={effectiveStatus} 
+                onValueChange={handleStatusChange}
+                disabled={updateASR.isPending}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VALIDATION_STATUS_OPTIONS.map((status) => (
+                    <SelectItem 
+                      key={status} 
+                      value={status}
+                      disabled={status === 'valid' && !canSelectValid}
+                    >
+                      {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                onClick={handleSaveStatus}
+                disabled={!hasStatusChanged || updateASR.isPending}
+              >
+                {updateASR.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  'Update Status'
+                )}
+              </Button>
+            </div>
+            {!canSelectValid && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Cannot validate until ASR is 100% complete (currently {asr.completeness_percent || 0}%)
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
       
       <Tabs defaultValue="a">
         <TabsList className="flex-wrap h-auto">
@@ -193,6 +312,29 @@ export default function ASRDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Validation Confirmation Dialog */}
+      <AlertDialog open={showValidateDialog} onOpenChange={setShowValidateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Validate ASR?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Validation requires 100% completeness across all sections.
+              {!canSelectValid && (
+                <span className="block mt-2 text-destructive">
+                  Warning: ASR is only {asr.completeness_percent || 0}% complete. Validation will be blocked.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmValidate}>
+              Validate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
