@@ -314,6 +314,7 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
         'single_printed_letter': 'letter-name',
         'spoken_onset_rime_pair': 'phoneme', // Onset-rime blending uses phoneme type
         'spoken_word_pair': 'phoneme', // Rhyme recognition uses phoneme type
+        'spoken_word_prompt': 'phoneme', // Syllable segmentation uses phoneme type
       };
       const rawItemType = sectionD.item_type || 'phoneme';
       const itemType = itemTypeMap[rawItemType] || rawItemType;
