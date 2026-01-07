@@ -23,6 +23,7 @@ import SessionsPage from "./pages/SessionsPage";
 import NewSessionPage from "./pages/NewSessionPage";
 import SessionRunPage from "./pages/SessionRunPage";
 import SessionStudentPage from "./pages/SessionStudentPage";
+import AssessmentPreviewPage from "./pages/AssessmentPreviewPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -63,6 +64,7 @@ const App = () => (
                     <Route path="/sessions/new" element={<NewSessionPage />} />
                     <Route path="/sessions/:id/run" element={<SessionRunPage />} />
                     <Route path="/sessions/:id/student" element={<SessionStudentPage />} />
+                    <Route path="/preview" element={<AssessmentPreviewPage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </MainLayout>
