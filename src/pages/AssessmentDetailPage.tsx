@@ -31,10 +31,11 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 
 const STATUS_OPTIONS = ['stub', 'draft', 'active', 'deprecated'] as const;
+type AssessmentStatus = typeof STATUS_OPTIONS[number];
 
 export default function AssessmentDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<AssessmentStatus | null>(null);
   const [showActivateDialog, setShowActivateDialog] = useState(false);
 
   // Validate route param before any queries
@@ -85,14 +86,10 @@ export default function AssessmentDetailPage() {
   const isLoading = assessmentLoading || asrsLoading || assessmentBanksLoading || 
                     banksLoading || formsLoading || itemsLoading || scoringLoading;
 
-  // Get the effective status for display and selection
-  const effectiveStatus = selectedStatus ?? assessment?.status ?? 'stub';
-  const hasStatusChanged = selectedStatus !== null && selectedStatus !== assessment?.status;
-
-  // Check if "active" should be disabled in UI
+  // canSelectActive computed early for UI disabling (chainStatus may be null during load)
   const canSelectActive = chainStatus?.isComplete ?? false;
 
-  const handleStatusChange = (value: string) => {
+  const handleStatusChange = (value: AssessmentStatus) => {
     setSelectedStatus(value);
   };
 
@@ -144,6 +141,10 @@ export default function AssessmentDetailPage() {
       </div>
     );
   }
+
+  // Compute effective status after we know assessment exists
+  const effectiveStatus = selectedStatus ?? (assessment.status as AssessmentStatus) ?? 'stub';
+  const hasStatusChanged = selectedStatus !== null && selectedStatus !== assessment.status;
 
   const componentInfo = COMPONENT_INFO[assessment.component_code as keyof typeof COMPONENT_INFO];
 
@@ -251,7 +252,7 @@ export default function AssessmentDetailPage() {
                 <Button
                   size="sm"
                   onClick={handleSaveStatus}
-                  disabled={!hasStatusChanged || updateAssessment.isPending}
+                  disabled={!hasStatusChanged || updateAssessment.isPending || (selectedStatus === 'active' && !canSelectActive)}
                 >
                   {updateAssessment.isPending ? (
                     <>
@@ -263,9 +264,9 @@ export default function AssessmentDetailPage() {
                   )}
                 </Button>
               </div>
-              {!canSelectActive && (
+              {chainStatus && !chainStatus.isComplete && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  Cannot activate until chain is complete: {chainStatus?.missingSteps.map(s => getStepLabel(s)).join(', ')}
+                  Cannot activate until chain is complete: {chainStatus.missingSteps.map(s => getStepLabel(s)).join(', ')}
                 </p>
               )}
             </div>
