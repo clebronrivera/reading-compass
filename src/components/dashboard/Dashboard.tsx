@@ -8,7 +8,8 @@ import { getAllContentBanks } from '@/data/contentBanks';
 import { getAllForms } from '@/data/forms';
 import { getAllItems } from '@/data/items';
 import { getAllScoringOutputs } from '@/data/scoringOutputs';
-import { COMPONENT_INFO, ComponentCode } from '@/types/registry';
+import { COMPONENT_INFO } from '@/types/registry';
+import { getComponentBgClass, getComponentTextClass, type ComponentCode } from '@/lib/componentColors';
 import { cn } from '@/lib/utils';
 import {
   Database,
@@ -21,28 +22,6 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-
-const getComponentBgClass = (code: ComponentCode) => {
-  const colors: Record<ComponentCode, string> = {
-    PA: 'bg-component-pa/10 hover:bg-component-pa/20 border-component-pa/30',
-    PH: 'bg-component-ph/10 hover:bg-component-ph/20 border-component-ph/30',
-    FL: 'bg-component-fl/10 hover:bg-component-fl/20 border-component-fl/30',
-    VO: 'bg-component-vo/10 hover:bg-component-vo/20 border-component-vo/30',
-    RC: 'bg-component-rc/10 hover:bg-component-rc/20 border-component-rc/30',
-  };
-  return colors[code];
-};
-
-const getComponentTextClass = (code: ComponentCode) => {
-  const colors: Record<ComponentCode, string> = {
-    PA: 'text-component-pa',
-    PH: 'text-component-ph',
-    FL: 'text-component-fl',
-    VO: 'text-component-vo',
-    RC: 'text-component-rc',
-  };
-  return colors[code];
-};
 
 export function Dashboard() {
   const componentCounts = getComponentCounts();

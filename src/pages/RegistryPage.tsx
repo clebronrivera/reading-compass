@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { assessmentRegistry } from '@/data/assessmentRegistry';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { COMPONENT_INFO } from '@/types/registry';
 
 export default function RegistryPage() {
@@ -27,7 +28,7 @@ export default function RegistryPage() {
               <TableCell>{a.subcomponent_name}</TableCell>
               <TableCell>{a.content_model}</TableCell>
               <TableCell>{a.grade_range}</TableCell>
-              <TableCell><Badge className={a.status === 'active' ? 'bg-status-active' : 'bg-status-stub'}>{a.status}</Badge></TableCell>
+              <TableCell><StatusBadge status={a.status} /></TableCell>
             </TableRow>
           ))}
         </TableBody>

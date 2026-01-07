@@ -2,27 +2,47 @@ import { useParams, Link } from 'react-router-dom';
 import { getASRByVersionId } from '@/data/asrLibrary';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft } from 'lucide-react';
 
 export default function ASRDetailPage() {
   const { id } = useParams<{ id: string }>();
   const asr = getASRByVersionId(id || '');
 
-  if (!asr) return <p>ASR not found</p>;
+  if (!asr) {
+    return (
+      <div className="space-y-4">
+        <Link to="/asr" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
+          <ArrowLeft className="h-4 w-4" /> Back to ASR Library
+        </Link>
+        <p className="text-muted-foreground">ASR not found.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <Badge className="mb-2">ASR</Badge>
+        <Link to="/asr" className="text-sm text-primary hover:underline inline-flex items-center gap-1 mb-2">
+          <ArrowLeft className="h-4 w-4" /> Back to ASR Library
+        </Link>
+        <div className="flex items-center gap-2 mb-2">
+          <Badge variant="outline">ASR</Badge>
+          <StatusBadge status={asr.section_a.status} />
+        </div>
         <h1 className="text-2xl font-bold">{asr.section_a.assessment_name}</h1>
         <p className="font-mono text-muted-foreground">{asr.asr_version_id}</p>
-        <Link to={`/assessment/${asr.assessment_id}`} className="text-sm text-primary hover:underline">← Back to Assessment</Link>
+        <Link to={`/assessment/${asr.assessment_id}`} className="text-sm text-primary hover:underline">
+          View Assessment →
+        </Link>
       </div>
+      
       <div className="flex gap-4 text-sm">
-        <Badge className="bg-status-active">{asr.section_a.status}</Badge>
         <span>Completeness: {asr.completeness_percent}%</span>
-        <span>Validation: {asr.validation_status}</span>
+        <span>Validation: <StatusBadge status={asr.validation_status} size="sm" /></span>
       </div>
+      
       <Tabs defaultValue="a">
         <TabsList className="flex-wrap h-auto">
           {['A','B','C','D','E','F','G','H','I','J'].map(s => <TabsTrigger key={s} value={s.toLowerCase()}>Section {s}</TabsTrigger>)}
