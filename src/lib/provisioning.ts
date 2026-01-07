@@ -40,10 +40,24 @@ interface ASRSectionH {
   norm_reference?: string;
 }
 
+// generation_source determines how provisioning creates items
+type GenerationSource = 'stimulus_pool' | 'sample_items' | 'external_import';
+
+interface SampleItem {
+  stimulus: string;
+  expected_response?: string;
+  item_type?: string;
+  scoring_tags?: string[];
+}
+
 interface ASRSectionD {
+  // MANDATORY: tells provisioning where item content comes from
+  generation_source: GenerationSource;
+  
   item_type?: string;
   stimulus_pool?: string[];
   stimulus_rules?: string[];
+  sample_items?: SampleItem[];
   presentation_unit?: string;
   runtime_randomization_allowed?: boolean;
   persist_item_order?: boolean;
@@ -148,11 +162,13 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     result.created.contentBank = newBank as ContentBankRow;
   }
 
-  // Step 2b: Generate items from stimulus_pool if defined in section_d
-  const sectionD = (asr.section_d as ASRSectionD) || {};
+  // Step 2b: Generate items based on generation_source in section_d
+  const sectionD = (asr.section_d as unknown as ASRSectionD) || { generation_source: 'external_import' };
   const targetBank = result.created.contentBank || result.existing.contentBanks[0];
+  const generationSource = sectionD.generation_source || 'external_import';
   
-  if (sectionD.stimulus_pool && Array.isArray(sectionD.stimulus_pool) && sectionD.stimulus_pool.length > 0 && targetBank) {
+  // Handle stimulus_pool generation
+  if (generationSource === 'stimulus_pool' && sectionD.stimulus_pool && Array.isArray(sectionD.stimulus_pool) && sectionD.stimulus_pool.length > 0 && targetBank) {
     // Check if items already exist for this bank
     const { data: existingForms } = await supabase
       .from('forms')

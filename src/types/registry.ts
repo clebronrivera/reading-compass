@@ -44,11 +44,31 @@ export interface ASRSectionC {
   not_designed_for: string;
 }
 
+// generation_source determines how provisioning creates items:
+// - "stimulus_pool": items generated from stimulus_pool array (e.g., letter naming, phoneme lists)
+// - "sample_items": items generated from sample_items array in section_d
+// - "external_import": items must be imported manually; provisioning skips item generation
+export type GenerationSource = 'stimulus_pool' | 'sample_items' | 'external_import';
+
 export interface ASRSectionD {
+  // MANDATORY: tells provisioning where item content comes from
+  generation_source: GenerationSource;
+  
   content_model: string;
   item_types: string[];
   stimulus_description: string;
   response_format: string;
+  
+  // Optional fields used based on generation_source
+  item_type?: string;
+  stimulus_pool?: string[];
+  stimulus_rules?: string[];
+  sample_items?: Array<{
+    stimulus: string;
+    expected_response?: string;
+    item_type?: string;
+    scoring_tags?: string[];
+  }>;
 }
 
 export interface ASRSectionE {
