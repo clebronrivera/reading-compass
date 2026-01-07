@@ -62,7 +62,7 @@ export default function SessionStudentPage() {
 
   // Detect assessment type for specialized displays
   const isORFSession = session.assessment_id === 'FL-ORF';
-  const isOnsetRimeSession = session.assessment_id === 'PA-OONS';
+  const isBlankListeningSession = ['PA-OONS', 'PA-RHYM'].includes(session.assessment_id);
 
   // Show completion message if session is done
   if (session.status === 'completed') {
@@ -89,8 +89,8 @@ export default function SessionStudentPage() {
     );
   }
 
-  // Onset-Rime sessions: blank listening indicator (student doesn't see text)
-  if (isOnsetRimeSession) {
+  // Blank listening sessions: PA-OONS, PA-RHYM (student doesn't see text)
+  if (isBlankListeningSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-8">
         <div className="text-center">
