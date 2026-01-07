@@ -40,10 +40,22 @@ interface ASRSectionH {
   norm_reference?: string;
 }
 
+interface ASRSectionD {
+  item_type?: string;
+  stimulus_pool?: string[];
+  stimulus_rules?: string[];
+  presentation_unit?: string;
+  runtime_randomization_allowed?: boolean;
+  persist_item_order?: boolean;
+}
+
 interface ASRSectionI {
   forms_available?: string[];
   equivalence_sets?: string;
+  equivalence_required?: boolean;
   differentiation_keys?: string[];
+  minimum_bank_size?: number;
+  target_forms_per_level?: number;
   version_notes?: string;
 }
 
@@ -136,6 +148,118 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     result.created.contentBank = newBank as ContentBankRow;
   }
 
+  // Step 2b: Generate items from stimulus_pool if defined in section_d
+  const sectionD = (asr.section_d as ASRSectionD) || {};
+  const targetBank = result.created.contentBank || result.existing.contentBanks[0];
+  
+  if (sectionD.stimulus_pool && Array.isArray(sectionD.stimulus_pool) && sectionD.stimulus_pool.length > 0 && targetBank) {
+    // Check if items already exist for this bank
+    const { data: existingForms } = await supabase
+      .from('forms')
+      .select('form_id')
+      .eq('content_bank_id', targetBank.content_bank_id);
+
+    if (!existingForms || existingForms.length === 0) {
+      // Generate forms and items from stimulus pool
+      const stimulusPool = sectionD.stimulus_pool;
+      const sectionIData = (asr.section_i as ASRSectionI) || {};
+      const targetFormsPerLevel = sectionIData.target_forms_per_level || 2;
+      const itemType = sectionD.item_type || 'stimulus_token';
+      
+      // Parse stimulus_rules to extract item count per form (default 100 for letter naming)
+      let itemsPerForm = 100;
+      if (sectionD.stimulus_rules) {
+        const countRule = sectionD.stimulus_rules.find(r => r.includes('exactly') && r.includes('tokens'));
+        if (countRule) {
+          const match = countRule.match(/exactly\s+(\d+)/);
+          if (match) itemsPerForm = parseInt(match[1], 10);
+        }
+      }
+
+      // Generate shuffled token sequences following cycle rule
+      const generateTokenSequence = (pool: string[], count: number): string[] => {
+        const tokens: string[] = [];
+        let poolCopy = [...pool];
+        
+        while (tokens.length < count) {
+          // Shuffle the pool for each cycle
+          for (let i = poolCopy.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [poolCopy[i], poolCopy[j]] = [poolCopy[j], poolCopy[i]];
+          }
+          tokens.push(...poolCopy);
+          poolCopy = [...pool]; // Reset for next cycle
+        }
+        
+        return tokens.slice(0, count);
+      };
+
+      // Create forms with items
+      for (let formNum = 1; formNum <= targetFormsPerLevel; formNum++) {
+        const formId = `${assessmentId}.form${String(formNum).padStart(2, '0')}`;
+        const tokenSequence = generateTokenSequence(stimulusPool, itemsPerForm);
+        
+        // Create the form
+        const { data: newForm, error: formError } = await supabase
+          .from('forms')
+          .insert({
+            form_id: formId,
+            content_bank_id: targetBank.content_bank_id,
+            assessment_id: assessmentId,
+            form_number: formNum,
+            grade_or_level_tag: 'all', // Letter naming is typically not grade-differentiated
+            status: 'draft',
+            metadata: {
+              item_count: itemsPerForm,
+              stimulus_pool_size: stimulusPool.length,
+              generated_at: new Date().toISOString(),
+            },
+          })
+          .select()
+          .single();
+
+        if (formError) {
+          result.errors.push(`Failed to create form ${formId}: ${formError.message}`);
+          continue;
+        }
+
+        result.created.forms.push(newForm as FormRow);
+
+        // Create items for this form
+        const itemInserts = tokenSequence.map((token, index) => ({
+          item_id: `${formId}.item${String(index + 1).padStart(3, '0')}`,
+          form_id: formId,
+          item_type: itemType,
+          sequence_number: index + 1,
+          content_payload: {
+            stimulus: token,
+            expected_response: token, // For letter naming, the expected response is the letter name
+            position: index + 1,
+          },
+          scoring_tags: ['letter_correct', 'letter_incorrect'],
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('items')
+          .insert(itemInserts);
+
+        if (itemsError) {
+          result.errors.push(`Failed to create items for ${formId}: ${itemsError.message}`);
+        }
+      }
+
+      // Update bank size
+      const totalItems = targetFormsPerLevel * itemsPerForm;
+      await supabase
+        .from('content_banks')
+        .update({ 
+          current_size: totalItems,
+          status: 'ready',
+        })
+        .eq('content_bank_id', targetBank.content_bank_id);
+    }
+  }
+
   // Step 3: Check/Create Scoring Output
   const { data: existingScoring, error: scoringError } = await supabase
     .from('scoring_outputs')
@@ -224,9 +348,15 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     result.created.scoringOutput = newScoring as ScoringOutputRow;
   }
 
-  // Step 4: Validate content eligibility for form generation
-  const targetBank = result.created.contentBank || result.existing.contentBanks[0];
-  if (!targetBank) {
+  // Step 4: Validate content eligibility for form generation (for non-stimulus-pool assessments)
+  // Skip if forms were already generated from stimulus_pool in Step 2b
+  if (result.created.forms.length > 0) {
+    result.success = result.errors.length === 0;
+    return result;
+  }
+
+  const targetBankForForms = result.created.contentBank || result.existing.contentBanks[0];
+  if (!targetBankForForms) {
     result.errors.push('No content bank available for form generation');
     return result;
   }
@@ -235,7 +365,7 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
   const { data: forms, error: formsError } = await supabase
     .from('forms')
     .select('form_id')
-    .eq('content_bank_id', targetBank.content_bank_id);
+    .eq('content_bank_id', targetBankForForms.content_bank_id);
 
   if (formsError) {
     result.warnings.push(`Could not check existing forms: ${formsError.message}`);
@@ -245,7 +375,7 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
   const { data: items, error: itemsError } = await supabase
     .from('items')
     .select('*, forms!inner(content_bank_id)')
-    .eq('forms.content_bank_id', targetBank.content_bank_id);
+    .eq('forms.content_bank_id', targetBankForForms.content_bank_id);
 
   if (itemsError) {
     result.warnings.push(`Could not fetch items: ${itemsError.message}`);
@@ -265,10 +395,10 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
   });
 
   // Additional check: if bank is empty or has no items, warn appropriately
-  const bankHasContent = targetBank.current_size > 0 || (items && items.length > 0);
+  const bankHasContent = targetBankForForms.current_size > 0 || (items && items.length > 0);
   
   if (!bankHasContent) {
-    result.warnings.push(`Content bank "${targetBank.name}" is empty. Add items to generate forms.`);
+    result.warnings.push(`Content bank "${targetBankForForms.name}" is empty. Add items to generate forms.`);
   } else if (eligibleItems.length === 0) {
     // Has items but none are eligible (e.g., passages without approval)
     result.warnings.push('No eligible content found. For passage items, ensure validation_status is set to "approved".');
@@ -297,7 +427,7 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
 
         const formInsert = {
           form_id: formId,
-          content_bank_id: targetBank.content_bank_id,
+          content_bank_id: targetBankForForms.content_bank_id,
           assessment_id: assessmentId,
           form_number: formNumber,
           grade_or_level_tag: grade,
