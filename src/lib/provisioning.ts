@@ -41,7 +41,7 @@ interface ASRSectionH {
 }
 
 // generation_source determines how provisioning creates items
-type GenerationSource = 'stimulus_pool' | 'sample_items' | 'external_import';
+type GenerationSource = 'stimulus_pool' | 'sample_items' | 'sample_items_by_grade' | 'external_import';
 
 interface SampleItem {
   stimulus?: string;
@@ -64,6 +64,8 @@ interface ASRSectionD {
   stimulus_pool?: string[];
   stimulus_rules?: string[];
   sample_items?: SampleItem[];
+  // Grade-keyed word lists for WRF-style assessments
+  sample_items_by_grade?: Record<string, string[]>;
   presentation_unit?: string;
   runtime_randomization_allowed?: boolean;
   persist_item_order?: boolean;
@@ -400,7 +402,101 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     }
   }
 
-  // Step 3: Check/Create Scoring Output
+  // Handle sample_items_by_grade generation (grade-keyed word lists like WRF)
+  if (generationSource === 'sample_items_by_grade' && sectionD.sample_items_by_grade && targetBank) {
+    const { data: existingForms } = await supabase
+      .from('forms')
+      .select('form_id')
+      .eq('content_bank_id', targetBank.content_bank_id);
+
+    if (!existingForms || existingForms.length === 0) {
+      const gradeWordLists = sectionD.sample_items_by_grade;
+      const targetFormsPerLevel = sectionD.target_forms_per_level || 1;
+      const itemType = sectionD.item_type || 'word';
+      
+      // Shuffle function
+      const shuffleArray = <T>(arr: T[]): T[] => {
+        const copy = [...arr];
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+      };
+
+      let totalItemsCreated = 0;
+
+      // Create one form per grade level
+      for (const [gradeTag, wordList] of Object.entries(gradeWordLists)) {
+        if (!Array.isArray(wordList) || wordList.length === 0) continue;
+
+        for (let formNum = 1; formNum <= targetFormsPerLevel; formNum++) {
+          const formId = `${assessmentId}.${gradeTag}.form${String(formNum).padStart(2, '0')}`;
+          const shuffledWords = shuffleArray(wordList);
+          
+          // Create the form
+          const { data: newForm, error: formError } = await supabase
+            .from('forms')
+            .insert({
+              form_id: formId,
+              content_bank_id: targetBank.content_bank_id,
+              assessment_id: assessmentId,
+              form_number: formNum,
+              grade_or_level_tag: gradeTag,
+              status: 'draft',
+              metadata: {
+                item_count: shuffledWords.length,
+                generated_at: new Date().toISOString(),
+              },
+            })
+            .select()
+            .single();
+
+          if (formError) {
+            result.errors.push(`Failed to create form ${formId}: ${formError.message}`);
+            continue;
+          }
+
+          result.created.forms.push(newForm as FormRow);
+
+          // Create items for this form - each word becomes an item
+          const itemInserts = shuffledWords.map((word, index) => ({
+            item_id: `${formId}.item${String(index + 1).padStart(3, '0')}`,
+            form_id: formId,
+            item_type: itemType,
+            sequence_number: index + 1,
+            content_payload: {
+              stimulus: word,
+              expected_response: word,
+              position: index + 1,
+            },
+            scoring_tags: ['correct', 'incorrect'],
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('items')
+            .insert(itemInserts);
+
+          if (itemsError) {
+            result.errors.push(`Failed to create items for ${formId}: ${itemsError.message}`);
+          } else {
+            totalItemsCreated += shuffledWords.length;
+          }
+        }
+      }
+
+      // Update bank size
+      await supabase
+        .from('content_banks')
+        .update({ 
+          current_size: totalItemsCreated,
+          status: 'ready',
+        })
+        .eq('content_bank_id', targetBank.content_bank_id);
+    }
+  }
+
+
   const { data: existingScoring, error: scoringError } = await supabase
     .from('scoring_outputs')
     .select('*')
