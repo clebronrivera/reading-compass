@@ -2,15 +2,21 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { assessmentRegistry, getComponentCounts } from '@/data/assessmentRegistry';
-import { getAllASRs } from '@/data/asrLibrary';
-import { getAllContentBanks } from '@/data/contentBanks';
-import { getAllForms } from '@/data/forms';
-import { getAllItems } from '@/data/items';
-import { getAllScoringOutputs } from '@/data/scoringOutputs';
-import { COMPONENT_INFO } from '@/types/registry';
-import { getComponentBgClass, getComponentTextClass, type ComponentCode } from '@/lib/componentColors';
+import { 
+  useAssessments, 
+  useASRVersions, 
+  useContentBanks, 
+  useForms, 
+  useItems, 
+  useScoringOutputs,
+  useAllAssessmentBanks 
+} from '@/lib/api';
+import { COMPONENT_INFO, type ComponentCode } from '@/types/database';
+import { getComponentBgClass, getComponentTextClass } from '@/lib/componentColors';
+import { calculateAllChainStatuses, getStepLabel } from '@/lib/chainCompletion';
 import { cn } from '@/lib/utils';
+import { LoadingState } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
 import {
   Database,
   FileText,
@@ -24,25 +30,45 @@ import {
 } from 'lucide-react';
 
 export function Dashboard() {
-  const componentCounts = getComponentCounts();
-  const asrs = getAllASRs();
-  const banks = getAllContentBanks();
-  const forms = getAllForms();
-  const items = getAllItems();
-  const scoringOutputs = getAllScoringOutputs();
+  const { data: assessments = [], isLoading: loadingAssessments, error: assessmentsError, refetch: refetchAssessments } = useAssessments();
+  const { data: asrs = [], isLoading: loadingASRs } = useASRVersions();
+  const { data: banks = [], isLoading: loadingBanks } = useContentBanks();
+  const { data: forms = [], isLoading: loadingForms } = useForms();
+  const { data: items = [], isLoading: loadingItems } = useItems();
+  const { data: scoringOutputs = [], isLoading: loadingScoring } = useScoringOutputs();
+  const { data: assessmentBanks = [], isLoading: loadingAssessmentBanks } = useAllAssessmentBanks();
 
-  const activeAssessments = assessmentRegistry.filter(a => a.status === 'active').length;
-  const stubAssessments = assessmentRegistry.filter(a => a.status === 'stub').length;
+  const isLoading = loadingAssessments || loadingASRs || loadingBanks || loadingForms || loadingItems || loadingScoring || loadingAssessmentBanks;
 
-  // Calculate chain completion
-  const chainComplete = assessmentRegistry.filter(a => 
-    a.current_asr_version_id && 
-    a.content_bank_ids.length > 0
-  ).length;
-  const chainCompletionPercent = Math.round((chainComplete / assessmentRegistry.length) * 100);
+  if (isLoading) {
+    return <LoadingState title="Loading dashboard..." />;
+  }
+
+  if (assessmentsError) {
+    return <ErrorState title="Failed to load dashboard" error={assessmentsError} onRetry={refetchAssessments} />;
+  }
+
+  // Calculate component counts
+  const componentCounts: Record<ComponentCode, number> = { PA: 0, PH: 0, FL: 0, VO: 0, RC: 0 };
+  assessments.forEach((a) => {
+    const code = a.component_code as ComponentCode;
+    if (componentCounts[code] !== undefined) {
+      componentCounts[code]++;
+    }
+  });
+
+  const activeAssessments = assessments.filter(a => a.status === 'active').length;
+  const stubAssessments = assessments.filter(a => a.status === 'stub').length;
+
+  // Calculate chain completion for all assessments
+  const chainStatuses = calculateAllChainStatuses(assessments, asrs, assessmentBanks, forms, items, scoringOutputs);
+  const completeChains = Array.from(chainStatuses.values()).filter(s => s.isComplete).length;
+  const chainCompletionPercent = assessments.length > 0 
+    ? Math.round((completeChains / assessments.length) * 100) 
+    : 0;
 
   const libraryStats = [
-    { name: 'Registry', count: assessmentRegistry.length, icon: Database, url: '/registry' },
+    { name: 'Registry', count: assessments.length, icon: Database, url: '/registry' },
     { name: 'ASRs', count: asrs.length, icon: FileText, url: '/asr' },
     { name: 'Banks', count: banks.length, icon: FolderOpen, url: '/banks' },
     { name: 'Forms', count: forms.length, icon: FileBox, url: '/forms' },
@@ -65,7 +91,7 @@ export function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Assessments</p>
-                <p className="text-3xl font-bold">{assessmentRegistry.length}</p>
+                <p className="text-3xl font-bold">{assessments.length}</p>
               </div>
               <div className="flex gap-2">
                 <Badge variant="secondary" className="bg-status-active/20 text-status-active">
@@ -83,12 +109,12 @@ export function Dashboard() {
           <CardContent className="pt-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Chain Completion</p>
+                <p className="text-sm text-muted-foreground">Chain Completion (5 steps)</p>
                 <span className="text-sm font-medium">{chainCompletionPercent}%</span>
               </div>
               <Progress value={chainCompletionPercent} className="h-2" />
               <p className="text-xs text-muted-foreground">
-                {chainComplete} of {assessmentRegistry.length} have complete Registry → ASR → Bank chain
+                {completeChains} of {assessments.length} have complete ASR → Bank → Form → Items → Scoring chain
               </p>
             </div>
           </CardContent>
@@ -110,7 +136,7 @@ export function Dashboard() {
                   <AlertCircle className="h-10 w-10 text-status-draft" />
                   <div>
                     <p className="font-medium">Work in Progress</p>
-                    <p className="text-sm text-muted-foreground">{assessmentRegistry.length - chainComplete} assessments need completion</p>
+                    <p className="text-sm text-muted-foreground">{assessments.length - completeChains} assessments need completion</p>
                   </div>
                 </>
               )}
@@ -167,16 +193,16 @@ export function Dashboard() {
       {/* Dependency Chain Visual */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Dependency Chain</CardTitle>
+          <CardTitle className="text-lg">Dependency Chain (5 Steps)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center gap-2 flex-wrap py-4">
-            {['Registry', 'ASR', 'Bank', 'Form', 'Items', 'Scoring'].map((step, i) => (
+            {(['ASR', 'BANK', 'FORMS', 'ITEMS', 'SCORING'] as const).map((step, i) => (
               <div key={step} className="flex items-center gap-2">
                 <div className="px-4 py-2 rounded-lg bg-primary/10 border border-primary/20 text-sm font-medium">
-                  {step}
+                  {getStepLabel(step)}
                 </div>
-                {i < 5 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
+                {i < 4 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
               </div>
             ))}
           </div>
