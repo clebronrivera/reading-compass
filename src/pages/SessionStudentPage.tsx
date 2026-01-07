@@ -60,6 +60,9 @@ export default function SessionStudentPage() {
   const content = currentItem?.content_payload as ItemContent;
   const stimulus = content?.stimulus || content?.text || '';
 
+  // Detect ORF session for full passage display
+  const isORFSession = session.assessment_id === 'FL-ORF';
+
   // Show completion message if session is done
   if (session.status === 'completed') {
     return (
@@ -72,6 +75,20 @@ export default function SessionStudentPage() {
     );
   }
 
+  // ORF sessions show full passage for reading aloud
+  if (isORFSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-8">
+        <div className="max-w-4xl">
+          <p className="text-3xl md:text-4xl font-serif text-foreground leading-relaxed text-justify">
+            {stimulus}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Default: single-item stimulus display
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-8">
       <div className="text-center max-w-4xl">
