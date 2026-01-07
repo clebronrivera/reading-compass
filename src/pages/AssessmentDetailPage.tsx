@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAssessment } from '@/lib/api/assessments';
+import { useAssessment, useUpdateAssessment } from '@/lib/api/assessments';
 import { useASRVersionsByAssessment } from '@/lib/api/asrVersions';
 import { useContentBanks } from '@/lib/api/contentBanks';
 import { useAssessmentBanks } from '@/lib/api/assessmentBanks';
@@ -13,13 +13,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { COMPONENT_INFO } from '@/types/registry';
-import { ArrowLeft, ArrowRight, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 
+const STATUS_OPTIONS = ['stub', 'draft', 'active', 'deprecated'] as const;
+
 export default function AssessmentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [showActivateDialog, setShowActivateDialog] = useState(false);
 
   // Validate route param before any queries
   if (!isValidRouteId(id)) {
@@ -33,6 +49,8 @@ export default function AssessmentDetailPage() {
   const { data: forms = [], isLoading: formsLoading } = useFormsByAssessment(id);
   const { data: allItems = [], isLoading: itemsLoading } = useItems();
   const { data: scoring = [], isLoading: scoringLoading } = useScoringOutputsByAssessment(id);
+
+  const updateAssessment = useUpdateAssessment();
 
   // Resolve linked banks from join table
   const linkedBankIds = useMemo(() => 
@@ -66,6 +84,47 @@ export default function AssessmentDetailPage() {
 
   const isLoading = assessmentLoading || asrsLoading || assessmentBanksLoading || 
                     banksLoading || formsLoading || itemsLoading || scoringLoading;
+
+  // Get the effective status for display and selection
+  const effectiveStatus = selectedStatus ?? assessment?.status ?? 'stub';
+  const hasStatusChanged = selectedStatus !== null && selectedStatus !== assessment?.status;
+
+  // Check if "active" should be disabled in UI
+  const canSelectActive = chainStatus?.isComplete ?? false;
+
+  const handleStatusChange = (value: string) => {
+    setSelectedStatus(value);
+  };
+
+  const handleSaveStatus = () => {
+    if (!assessment || !selectedStatus) return;
+
+    // If activating, show confirmation dialog
+    if (selectedStatus === 'active' && assessment.status !== 'active') {
+      setShowActivateDialog(true);
+      return;
+    }
+
+    // Otherwise, update directly
+    performUpdate();
+  };
+
+  const performUpdate = () => {
+    if (!assessment || !selectedStatus) return;
+    updateAssessment.mutate(
+      { id: assessment.assessment_id, updates: { status: selectedStatus } },
+      {
+        onSuccess: () => {
+          setSelectedStatus(null); // Reset to track from server state
+        },
+      }
+    );
+  };
+
+  const handleConfirmActivate = () => {
+    setShowActivateDialog(false);
+    performUpdate();
+  };
 
   if (isLoading) {
     return <LoadingState title="Loading assessment..." />;
@@ -155,7 +214,7 @@ export default function AssessmentDetailPage() {
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
           <CardHeader><CardTitle>Details</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Content Model</p>
               <p>{assessment.content_model}</p>
@@ -164,9 +223,51 @@ export default function AssessmentDetailPage() {
               <p className="text-sm text-muted-foreground">Grade Range</p>
               <p>{assessment.grade_range}</p>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Status</p>
-              <StatusBadge status={assessment.status} />
+            
+            {/* Status Change UI */}
+            <div className="pt-2 border-t">
+              <p className="text-sm text-muted-foreground mb-2">Status</p>
+              <div className="flex items-center gap-2">
+                <Select 
+                  value={effectiveStatus} 
+                  onValueChange={handleStatusChange}
+                  disabled={updateAssessment.isPending}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((status) => (
+                      <SelectItem 
+                        key={status} 
+                        value={status}
+                        disabled={status === 'active' && !canSelectActive}
+                      >
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  onClick={handleSaveStatus}
+                  disabled={!hasStatusChanged || updateAssessment.isPending}
+                >
+                  {updateAssessment.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    'Update Status'
+                  )}
+                </Button>
+              </div>
+              {!canSelectActive && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Cannot activate until chain is complete: {chainStatus?.missingSteps.map(s => getStepLabel(s)).join(', ')}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -225,6 +326,29 @@ export default function AssessmentDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Activation Confirmation Dialog */}
+      <AlertDialog open={showActivateDialog} onOpenChange={setShowActivateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Activate Assessment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Activation requires a complete dependency chain: ASR Version, Content Bank, Forms, Items, and Scoring Model.
+              {!canSelectActive && (
+                <span className="block mt-2 text-destructive">
+                  Warning: Chain is incomplete. Activation will be blocked by the gate.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmActivate}>
+              Activate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
