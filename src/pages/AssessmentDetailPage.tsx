@@ -35,10 +35,21 @@ export default function AssessmentDetailPage() {
   const { data: scoring = [], isLoading: scoringLoading } = useScoringOutputsByAssessment(id);
 
   // Resolve linked banks from join table
-  const linkedBanks = useMemo(() => {
-    const linkedBankIds = new Set(assessmentBanks.map(ab => ab.content_bank_id));
-    return allBanks.filter(b => linkedBankIds.has(b.content_bank_id));
-  }, [assessmentBanks, allBanks]);
+  const linkedBankIds = useMemo(() => 
+    new Set(assessmentBanks.map(ab => ab.content_bank_id)), 
+    [assessmentBanks]
+  );
+
+  const linkedBanks = useMemo(() => 
+    allBanks.filter(b => linkedBankIds.has(b.content_bank_id)), 
+    [allBanks, linkedBankIds]
+  );
+
+  // Filter forms to only those in linked banks (bank-aware eligibility)
+  const eligibleForms = useMemo(() => 
+    forms.filter(f => linkedBankIds.has(f.content_bank_id)), 
+    [forms, linkedBankIds]
+  );
 
   // Calculate chain status
   const chainStatus = useMemo(() => {
@@ -188,10 +199,10 @@ export default function AssessmentDetailPage() {
               ) : <p className="text-muted-foreground text-sm">None</p>}
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Forms ({forms.length})</p>
-              {forms.length > 0 ? (
+              <p className="text-sm text-muted-foreground">Forms ({eligibleForms.length})</p>
+              {eligibleForms.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
-                  {forms.map(f => (
+                  {eligibleForms.map(f => (
                     <Link key={f.form_id} to={`/forms/${f.form_id}`} className="text-primary hover:underline font-mono text-sm">
                       {f.form_id}
                     </Link>
