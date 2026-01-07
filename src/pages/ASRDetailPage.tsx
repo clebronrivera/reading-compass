@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useASRVersion, useUpdateASRVersion } from '@/lib/api/asrVersions';
 import { isValidRouteId } from '@/lib/routeValidation';
+import { generateAssessmentAssets, ProvisioningResult } from '@/lib/provisioning';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -18,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Wand2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 
@@ -29,6 +30,8 @@ export default function ASRDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [selectedStatus, setSelectedStatus] = useState<ValidationStatus | null>(null);
   const [showValidateDialog, setShowValidateDialog] = useState(false);
+  const [isProvisioning, setIsProvisioning] = useState(false);
+  const [provisioningResult, setProvisioningResult] = useState<ProvisioningResult | null>(null);
 
   // Validate route param before any queries
   if (!isValidRouteId(id)) {
@@ -73,6 +76,26 @@ export default function ASRDetailPage() {
   const handleConfirmValidate = () => {
     setShowValidateDialog(false);
     performUpdate();
+  };
+
+  const handleGenerateAssets = async () => {
+    if (!asr) return;
+    setIsProvisioning(true);
+    setProvisioningResult(null);
+    try {
+      const result = await generateAssessmentAssets(asr);
+      setProvisioningResult(result);
+    } catch (err) {
+      setProvisioningResult({
+        success: false,
+        errors: [err instanceof Error ? err.message : 'Unknown error'],
+        warnings: [],
+        created: { forms: [] },
+        existing: { contentBanks: [], scoringOutputs: [] },
+      });
+    } finally {
+      setIsProvisioning(false);
+    }
   };
 
   if (isLoading) {
@@ -194,6 +217,148 @@ export default function ASRDetailPage() {
               </p>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Generate Assessment Assets Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wand2 className="h-5 w-5" />
+            Generate Assessment Assets
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Automatically create content bank, scoring model, and forms from this ASR specification.
+          </p>
+          
+          <Button 
+            onClick={handleGenerateAssets} 
+            disabled={isProvisioning || (asr.completeness_percent ?? 0) < 100}
+          >
+            {isProvisioning ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Wand2 className="h-4 w-4 mr-2" />
+                Generate Assets
+              </>
+            )}
+          </Button>
+
+          {(asr.completeness_percent ?? 0) < 100 && (
+            <p className="text-xs text-muted-foreground">
+              ASR must be 100% complete before generating assets (currently {asr.completeness_percent || 0}%)
+            </p>
+          )}
+
+          {/* Provisioning Results */}
+          {provisioningResult && (
+            <div className="space-y-3 pt-4 border-t">
+              {/* Status Header */}
+              <div className={`flex items-center gap-2 ${provisioningResult.success ? 'text-green-600' : 'text-destructive'}`}>
+                {provisioningResult.success ? (
+                  <>
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="font-medium">Provisioning Complete</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-5 w-5" />
+                    <span className="font-medium">Provisioning Failed</span>
+                  </>
+                )}
+              </div>
+
+              {/* Errors */}
+              {provisioningResult.errors.length > 0 && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                  <p className="text-sm font-medium text-destructive mb-1">Errors:</p>
+                  <ul className="text-sm text-destructive space-y-1">
+                    {provisioningResult.errors.map((e, i) => (
+                      <li key={i}>• {e}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Warnings */}
+              {provisioningResult.warnings.length > 0 && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-3">
+                  <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400 mb-1 flex items-center gap-1">
+                    <AlertTriangle className="h-4 w-4" /> Warnings:
+                  </p>
+                  <ul className="text-sm text-yellow-700 dark:text-yellow-400 space-y-1">
+                    {provisioningResult.warnings.map((w, i) => (
+                      <li key={i}>• {w}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Created Assets */}
+              {(provisioningResult.created.contentBank || provisioningResult.created.scoringOutput || provisioningResult.created.forms.length > 0) && (
+                <div className="bg-green-500/10 border border-green-500/20 rounded-md p-3">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">Created:</p>
+                  <ul className="text-sm space-y-1">
+                    {provisioningResult.created.contentBank && (
+                      <li>
+                        • Content Bank: <Link to={`/banks/${provisioningResult.created.contentBank.content_bank_id}`} className="text-primary hover:underline">
+                          {provisioningResult.created.contentBank.content_bank_id}
+                        </Link>
+                      </li>
+                    )}
+                    {provisioningResult.created.scoringOutput && (
+                      <li>
+                        • Scoring Model: <Link to={`/scoring/${provisioningResult.created.scoringOutput.scoring_model_id}`} className="text-primary hover:underline">
+                          {provisioningResult.created.scoringOutput.scoring_model_id}
+                        </Link>
+                      </li>
+                    )}
+                    {provisioningResult.created.forms.length > 0 && (
+                      <li>
+                        • Forms: {provisioningResult.created.forms.map((f, i) => (
+                          <span key={f.form_id}>
+                            {i > 0 && ', '}
+                            <Link to={`/forms/${f.form_id}`} className="text-primary hover:underline">
+                              {f.form_id}
+                            </Link>
+                          </span>
+                        ))}
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {/* Existing Assets */}
+              {(provisioningResult.existing.contentBanks.length > 0 || provisioningResult.existing.scoringOutputs.length > 0) && (
+                <div className="bg-muted/50 border rounded-md p-3">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Already Exists:</p>
+                  <ul className="text-sm space-y-1">
+                    {provisioningResult.existing.contentBanks.map(b => (
+                      <li key={b.content_bank_id}>
+                        • Bank: <Link to={`/banks/${b.content_bank_id}`} className="text-primary hover:underline">
+                          {b.content_bank_id}
+                        </Link>
+                      </li>
+                    ))}
+                    {provisioningResult.existing.scoringOutputs.map(s => (
+                      <li key={s.scoring_model_id}>
+                        • Scoring: <Link to={`/scoring/${s.scoring_model_id}`} className="text-primary hover:underline">
+                          {s.scoring_model_id}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
       
