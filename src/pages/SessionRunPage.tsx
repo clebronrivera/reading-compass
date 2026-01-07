@@ -36,6 +36,19 @@ export default function SessionRunPage() {
   const totalItems = items?.length ?? 0;
   const isConnected = !!session && !!items;
 
+  // Detect ORF session and extract word tokens (must be before any early returns)
+  const isORFSession = session?.assessment_id === 'FL-ORF';
+  const passageContent = currentItem?.content_payload as unknown as ORFPassageContent | undefined;
+  const wordTokens = useMemo(() => {
+    if (!passageContent) return [];
+    // Use existing word_tokens if available, otherwise tokenize from stimulus/text
+    if (passageContent.word_tokens?.length) {
+      return passageContent.word_tokens;
+    }
+    const text = passageContent.stimulus || (passageContent as unknown as ItemContent)?.text || '';
+    return text.split(/\s+/).filter(Boolean);
+  }, [passageContent]);
+
   // Get error types from item content
   const errorTypes = currentItem 
     ? (currentItem.content_payload as ItemContent)?.error_types || currentItem.scoring_tags || []
@@ -169,21 +182,8 @@ export default function SessionRunPage() {
     return <ErrorState title="No items found for this form" />;
   }
 
-  // Detect ORF session and extract word tokens
-  const isORFSession = session.assessment_id === 'FL-ORF';
-  const passageContent = currentItem?.content_payload as unknown as ORFPassageContent | undefined;
-  const wordTokens = useMemo(() => {
-    if (!passageContent) return [];
-    // Use existing word_tokens if available, otherwise tokenize from stimulus/text
-    if (passageContent.word_tokens?.length) {
-      return passageContent.word_tokens;
-    }
-    const text = passageContent.stimulus || (passageContent as unknown as ItemContent)?.text || '';
-    return text.split(/\s+/).filter(Boolean);
-  }, [passageContent]);
-
   // Route to ORF Runner for FL-ORF sessions with word tokens
-  if (isORFSession && wordTokens.length > 0 && currentItem) {
+  if (isORFSession && wordTokens.length > 0 && currentItem && session) {
     return (
       <ORFRunner 
         session={session} 
