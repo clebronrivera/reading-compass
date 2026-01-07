@@ -23,7 +23,8 @@ import {
   BookOpen,
   ChevronDown,
 } from 'lucide-react';
-import { COMPONENT_INFO, ComponentCode } from '@/types/registry';
+import { COMPONENT_INFO } from '@/types/registry';
+import { getComponentDotClass, COMPONENT_CODES, type ComponentCode } from '@/lib/componentColors';
 import { cn } from '@/lib/utils';
 import {
   Collapsible,
@@ -39,19 +40,6 @@ const libraryItems = [
   { title: 'Items', url: '/items', icon: LayoutList },
   { title: 'Scoring Outputs', url: '/scoring', icon: Calculator },
 ];
-
-const componentCodes: ComponentCode[] = ['PA', 'PH', 'FL', 'VO', 'RC'];
-
-const getComponentColorClass = (code: ComponentCode) => {
-  const colors: Record<ComponentCode, string> = {
-    PA: 'bg-component-pa',
-    PH: 'bg-component-ph',
-    FL: 'bg-component-fl',
-    VO: 'bg-component-vo',
-    RC: 'bg-component-rc',
-  };
-  return colors[code];
-};
 
 export function AppSidebar() {
   const location = useLocation();
@@ -109,7 +97,7 @@ export function AppSidebar() {
             <CollapsibleContent>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {componentCodes.map((code) => (
+                  {COMPONENT_CODES.map((code) => (
                     <SidebarMenuItem key={code}>
                       <SidebarMenuButton asChild>
                         <NavLink
@@ -121,7 +109,7 @@ export function AppSidebar() {
                               : 'text-sidebar-foreground hover:bg-sidebar-accent'
                           )}
                         >
-                          <span className={cn('h-3 w-3 rounded-full', getComponentColorClass(code))} />
+                          <span className={cn('h-3 w-3 rounded-full', getComponentDotClass(code))} />
                           <span className="text-sm">{COMPONENT_INFO[code].name}</span>
                         </NavLink>
                       </SidebarMenuButton>

@@ -14,6 +14,10 @@ import ScoringPage from "./pages/ScoringPage";
 import ComponentPage from "./pages/ComponentPage";
 import AssessmentDetailPage from "./pages/AssessmentDetailPage";
 import ASRDetailPage from "./pages/ASRDetailPage";
+import ContentBankDetailPage from "./pages/ContentBankDetailPage";
+import FormDetailPage from "./pages/FormDetailPage";
+import ItemDetailPage from "./pages/ItemDetailPage";
+import ScoringDetailPage from "./pages/ScoringDetailPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +40,10 @@ const App = () => (
             <Route path="/component/:code" element={<ComponentPage />} />
             <Route path="/assessment/:id" element={<AssessmentDetailPage />} />
             <Route path="/asr/:id" element={<ASRDetailPage />} />
+            <Route path="/banks/:id" element={<ContentBankDetailPage />} />
+            <Route path="/forms/:id" element={<FormDetailPage />} />
+            <Route path="/items/:id" element={<ItemDetailPage />} />
+            <Route path="/scoring/:id" element={<ScoringDetailPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </MainLayout>

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { getAllScoringOutputs } from '@/data/scoringOutputs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -10,9 +11,17 @@ export default function ScoringPage() {
         <div className="grid gap-4">
           {scoring.map((s) => (
             <Card key={s.scoring_model_id}>
-              <CardHeader><CardTitle className="font-mono text-lg">{s.scoring_model_id}</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle>
+                  <Link to={`/scoring/${s.scoring_model_id}`} className="font-mono text-lg text-primary hover:underline">
+                    {s.scoring_model_id}
+                  </Link>
+                </CardTitle>
+              </CardHeader>
               <CardContent className="space-y-2">
-                <p className="text-sm text-muted-foreground">Assessment: {s.assessment_id}</p>
+                <p className="text-sm text-muted-foreground">
+                  Assessment: <Link to={`/assessment/${s.assessment_id}`} className="text-primary hover:underline">{s.assessment_id}</Link>
+                </p>
                 <p className="text-sm">Raw Metrics: {s.raw_metrics_schema.length} | Derived: {s.derived_metrics_schema.length}</p>
                 <p className="text-sm">Flags: {s.flags.length} | Thresholds: {s.thresholds.length}</p>
               </CardContent>
