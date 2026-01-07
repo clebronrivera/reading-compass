@@ -138,6 +138,98 @@ export default function ASRDetailPage() {
     return Array.isArray(val) ? val : [];
   };
 
+  // Helper to render section content dynamically
+  const renderSectionContent = (section: Record<string, unknown>) => {
+    if (!section || Object.keys(section).length === 0) {
+      return <p className="text-muted-foreground italic">No data available</p>;
+    }
+
+    return (
+      <div className="space-y-3">
+        {Object.entries(section).map(([key, value]) => {
+          const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          
+          if (Array.isArray(value)) {
+            if (value.length === 0) return null;
+            // Check if array contains objects
+            if (typeof value[0] === 'object' && value[0] !== null) {
+              return (
+                <div key={key} className="space-y-2">
+                  <p className="font-medium text-sm">{label}:</p>
+                  <div className="pl-4 space-y-2">
+                    {value.map((item, idx) => (
+                      <div key={idx} className="text-sm bg-muted/50 p-2 rounded border">
+                        {typeof item === 'object' ? (
+                          <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(item, null, 2)}</pre>
+                        ) : (
+                          String(item)
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div key={key}>
+                <span className="font-medium text-sm">{label}:</span>
+                <ul className="list-disc list-inside text-sm text-muted-foreground pl-2">
+                  {value.map((item, idx) => (
+                    <li key={idx}>{String(item)}</li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+          
+          if (typeof value === 'object' && value !== null) {
+            return (
+              <div key={key} className="space-y-1">
+                <p className="font-medium text-sm">{label}:</p>
+                <pre className="text-xs bg-muted/50 p-2 rounded border whitespace-pre-wrap">
+                  {JSON.stringify(value, null, 2)}
+                </pre>
+              </div>
+            );
+          }
+          
+          return (
+            <p key={key} className="text-sm">
+              <span className="font-medium">{label}:</span>{' '}
+              <span className="text-muted-foreground">{String(value)}</span>
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const sectionTitles: Record<string, string> = {
+    a: 'Identity & Metadata',
+    b: 'Construct & Purpose',
+    c: 'Content Structure',
+    d: 'Student Interaction',
+    e: 'Assessor Interaction',
+    f: 'Scoring Rules',
+    g: 'Raw Metrics Schema',
+    h: 'Derived Metrics & Thresholds',
+    i: 'Content Bank Specification',
+    j: 'Engineering Hooks',
+  };
+
+  const sections: Record<string, Record<string, unknown>> = {
+    a: sectionA,
+    b: sectionB,
+    c: sectionC,
+    d: sectionD,
+    e: sectionE,
+    f: sectionF,
+    g: sectionG,
+    h: sectionH,
+    i: sectionI,
+    j: sectionJ,
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -364,119 +456,22 @@ export default function ASRDetailPage() {
       
       <Tabs defaultValue="a">
         <TabsList className="flex-wrap h-auto">
-          {['A','B','C','D','E','F','G','H','I','J'].map(s => <TabsTrigger key={s} value={s.toLowerCase()}>Section {s}</TabsTrigger>)}
+          {['A','B','C','D','E','F','G','H','I','J'].map(s => (
+            <TabsTrigger key={s} value={s.toLowerCase()}>Section {s}</TabsTrigger>
+          ))}
         </TabsList>
-        <TabsContent value="a">
-          <Card>
-            <CardHeader><CardTitle>Section A: Identification</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>ASR ID:</strong> {String(sectionA.asr_id || 'N/A')}</p>
-              <p><strong>Version:</strong> {String(sectionA.version || 'N/A')}</p>
-              <p><strong>Owner:</strong> {String(sectionA.owner || 'N/A')}</p>
-              <p><strong>Last Updated:</strong> {String(sectionA.last_updated || 'N/A')}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="b">
-          <Card>
-            <CardHeader><CardTitle>Section B: Classification</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Component:</strong> {String(sectionB.component || 'N/A')}</p>
-              <p><strong>Subcomponent:</strong> {String(sectionB.subcomponent || 'N/A')}</p>
-              <p><strong>Skill Focus:</strong> {String(sectionB.skill_focus || 'N/A')}</p>
-              <p><strong>Grade Range:</strong> {String(sectionB.grade_range || 'N/A')}</p>
-              <p><strong>Administration:</strong> {String(sectionB.administration_format || 'N/A')}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="c">
-          <Card>
-            <CardHeader><CardTitle>Section C: Purpose</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Purpose:</strong> {String(sectionC.purpose || 'N/A')}</p>
-              <p><strong>What it Measures:</strong> {String(sectionC.what_it_measures || 'N/A')}</p>
-              <p><strong>Intended Use:</strong> {String(sectionC.intended_use || 'N/A')}</p>
-              <p><strong>Not Designed For:</strong> {String(sectionC.not_designed_for || 'N/A')}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="d">
-          <Card>
-            <CardHeader><CardTitle>Section D: Content</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Content Model:</strong> {String(sectionD.content_model || 'N/A')}</p>
-              <p><strong>Item Types:</strong> {getArrayField(sectionD, 'item_types').join(', ') || 'N/A'}</p>
-              <p><strong>Stimulus:</strong> {String(sectionD.stimulus_description || 'N/A')}</p>
-              <p><strong>Response Format:</strong> {String(sectionD.response_format || 'N/A')}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="e">
-          <Card>
-            <CardHeader><CardTitle>Section E: Structure</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Total Items:</strong> {String(sectionE.total_items || 'N/A')}</p>
-              <p><strong>Timing:</strong> {String(sectionE.timing || 'N/A')}</p>
-              <p><strong>Stopping Rule:</strong> {String(sectionE.stopping_rule || 'N/A')}</p>
-              <p><strong>Materials:</strong> {getArrayField(sectionE, 'materials_required').join(', ') || 'N/A'}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="f">
-          <Card>
-            <CardHeader><CardTitle>Section F: Administration</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Script:</strong> {String(sectionF.administration_script || 'N/A')}</p>
-              <p><strong>Practice Items:</strong> {String(sectionF.practice_items || 'N/A')}</p>
-              <p><strong>Prompts:</strong> {getArrayField(sectionF, 'prompts').join(' | ') || 'N/A'}</p>
-              <p><strong>Supports:</strong> {getArrayField(sectionF, 'allowable_supports').join(', ') || 'N/A'}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="g">
-          <Card>
-            <CardHeader><CardTitle>Section G: Scoring</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Method:</strong> {String(sectionG.scoring_method || 'N/A')}</p>
-              <p><strong>Score Types:</strong> {getArrayField(sectionG, 'score_types').join(', ') || 'N/A'}</p>
-              <p><strong>Error Coding:</strong> {String(sectionG.error_coding || 'N/A')}</p>
-              <p><strong>Rubric:</strong> {String(sectionG.scoring_rubric || 'N/A')}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="h">
-          <Card>
-            <CardHeader><CardTitle>Section H: Metrics</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Raw Metrics:</strong> {getArrayField(sectionH, 'raw_metrics').join(', ') || 'N/A'}</p>
-              <p><strong>Derived:</strong> {getArrayField(sectionH, 'derived_metrics').join(', ') || 'N/A'}</p>
-              <p><strong>Benchmarks:</strong> {String(sectionH.benchmark_status || 'N/A')}</p>
-              <p><strong>Norm Ref:</strong> {String(sectionH.norm_reference || 'N/A')}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="i">
-          <Card>
-            <CardHeader><CardTitle>Section I: Forms</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Available:</strong> {getArrayField(sectionI, 'forms_available').join(', ') || 'N/A'}</p>
-              <p><strong>Equivalence:</strong> {String(sectionI.equivalence_sets || 'N/A')}</p>
-              <p><strong>Differentiation:</strong> {getArrayField(sectionI, 'differentiation_keys').join(', ') || 'N/A'}</p>
-              <p><strong>Notes:</strong> {String(sectionI.version_notes || 'N/A')}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="j">
-          <Card>
-            <CardHeader><CardTitle>Section J: Integration</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Export Format:</strong> {String(sectionJ.data_export_format || 'N/A')}</p>
-              <p><strong>Integration:</strong> {String(sectionJ.integration_notes || 'N/A')}</p>
-              <p><strong>Dashboard:</strong> {String(sectionJ.reporting_dashboard || 'N/A')}</p>
-              <p><strong>Flags:</strong> {String(sectionJ.flags_and_alerts || 'N/A')}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {Object.entries(sections).map(([key, sectionData]) => (
+          <TabsContent key={key} value={key}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Section {key.toUpperCase()}: {sectionTitles[key]}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {renderSectionContent(sectionData)}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
       </Tabs>
 
       {/* Validation Confirmation Dialog */}
