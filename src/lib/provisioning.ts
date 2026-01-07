@@ -144,22 +144,28 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     const sectionG = (asr.section_g as ASRSectionG) || {};
     const sectionH = (asr.section_h as ASRSectionH) || {};
 
-    const rawMetrics = (sectionH.raw_metrics || []).map((m: string) => ({
-      metric_id: m.toLowerCase().replace(/\s+/g, '_'),
-      name: m,
-      type: 'number',
-      description: `Raw metric: ${m}`,
-    }));
+    const rawMetricsArray = Array.isArray(sectionH.raw_metrics) ? sectionH.raw_metrics : [];
+    const rawMetrics = rawMetricsArray
+      .filter((m): m is string => typeof m === 'string' && m.length > 0)
+      .map((m: string) => ({
+        metric_id: m.toLowerCase().replace(/\s+/g, '_'),
+        name: m,
+        type: 'number',
+        description: `Raw metric: ${m}`,
+      }));
 
-    const derivedMetrics = (sectionH.derived_metrics || []).map((m: string) => ({
-      metric_id: m.toLowerCase().replace(/\s+/g, '_'),
-      name: m,
-      type: 'number',
-      description: `Derived metric: ${m}`,
-    }));
+    const derivedMetricsArray = Array.isArray(sectionH.derived_metrics) ? sectionH.derived_metrics : [];
+    const derivedMetrics = derivedMetricsArray
+      .filter((m): m is string => typeof m === 'string' && m.length > 0)
+      .map((m: string) => ({
+        metric_id: m.toLowerCase().replace(/\s+/g, '_'),
+        name: m,
+        type: 'number',
+        description: `Derived metric: ${m}`,
+      }));
 
     const errorCoding = Array.isArray(sectionG.error_coding) 
-      ? sectionG.error_coding 
+      ? sectionG.error_coding.filter((e): e is string => typeof e === 'string')
       : typeof sectionG.error_coding === 'string' 
         ? [sectionG.error_coding] 
         : [];
