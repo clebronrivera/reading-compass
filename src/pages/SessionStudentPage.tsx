@@ -4,7 +4,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { useSession } from '@/lib/api/sessions';
 import { useItemsByForm } from '@/lib/api/items';
 import { isValidRouteId } from '@/lib/routeValidation';
-import type { ItemContent } from '@/types/database';
+import { getDisplayText, getPayloadField } from '@/lib/itemDisplay';
 
 export default function SessionStudentPage() {
   const { id } = useParams<{ id: string }>();
@@ -57,8 +57,7 @@ export default function SessionStudentPage() {
 
   const currentIndex = session.current_item_index ?? 0;
   const currentItem = items[currentIndex];
-  const content = currentItem?.content_payload as ItemContent;
-  const stimulus = content?.stimulus || content?.text || '';
+  const stimulus = getDisplayText(currentItem?.content_payload);
 
   // Detect assessment type for specialized displays
   const isORFSession = session.assessment_id === 'FL-ORF';
@@ -109,8 +108,7 @@ export default function SessionStudentPage() {
 
   // PH-MPHY/PH-LWID: Show printed stimulus to student
   if (isPrintedWordSession) {
-    const mphyContent = content as unknown as { affixed_form?: string; text?: string };
-    const displayText = mphyContent?.affixed_form || mphyContent?.text || stimulus;
+    const displayText = getPayloadField(currentItem?.content_payload, 'affixed_form') || stimulus;
     
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-8">

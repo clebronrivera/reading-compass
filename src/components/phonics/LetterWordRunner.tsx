@@ -10,21 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { useUpdateSession } from '@/lib/api/sessions';
 import { useSessionResponses, useUpsertSessionResponse } from '@/lib/api/sessionResponses';
 import { toast } from 'sonner';
+import { getDisplayText, getPayloadField, getStimulusType } from '@/lib/itemDisplay';
 import type { SessionRow, ItemRow } from '@/types/database';
 
 interface LetterWordRunnerProps {
   session: SessionRow;
   items: ItemRow[];
-}
-
-interface LetterWordItemContent {
-  item_id?: string;
-  grade_band?: string;
-  stimulus_type?: string;
-  text?: string;
-  stimulus?: string;
-  difficulty_band?: string;
-  orthographic_pattern?: string | null;
 }
 
 type ResponseState = 'correct' | 'incorrect' | 'no_response';
@@ -47,17 +38,12 @@ export function LetterWordRunner({ session, items }: LetterWordRunnerProps) {
   const totalItems = items.length;
   const isConnected = !!session && items.length > 0;
 
-  // Extract content from item
-  const getItemContent = (item: ItemRow): LetterWordItemContent => {
-    return (item?.content_payload as LetterWordItemContent) || {};
-  };
-
-  const content = getItemContent(currentItem);
-  const stimulus = content.text || content.stimulus || '';
-  const stimulusType = content.stimulus_type || 'word';
-  const gradeBand = content.grade_band || '';
-  const difficultyBand = content.difficulty_band || 'medium';
-  const orthographicPattern = content.orthographic_pattern;
+  // Extract content using resilient helper (handles flat and nested payloads)
+  const stimulus = getDisplayText(currentItem?.content_payload);
+  const stimulusType = getStimulusType(currentItem?.content_payload) || 'word';
+  const gradeBand = getPayloadField<string>(currentItem?.content_payload, 'grade_band') || '';
+  const difficultyBand = getPayloadField<string>(currentItem?.content_payload, 'difficulty_band') || 'medium';
+  const orthographicPattern = getPayloadField<string | null>(currentItem?.content_payload, 'orthographic_pattern');
 
   // Load existing response for current item
   useEffect(() => {

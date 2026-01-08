@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { getDisplayText } from '@/lib/itemDisplay';
 
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -112,16 +113,11 @@ export default function ItemDetailPage() {
           <CardTitle>Content Payload</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {payload.stimulus && (
+          {/* Primary display text (handles both flat and nested payloads) */}
+          {getDisplayText(payload) && (
             <div>
               <p className="text-sm text-muted-foreground">Stimulus</p>
-              <p className="text-2xl font-bold">{String(payload.stimulus)}</p>
-            </div>
-          )}
-          {payload.text && (
-            <div>
-              <p className="text-sm text-muted-foreground">Text</p>
-              <p>{String(payload.text)}</p>
+              <p className="text-2xl font-bold">{getDisplayText(payload)}</p>
             </div>
           )}
           {choices.length > 0 && (

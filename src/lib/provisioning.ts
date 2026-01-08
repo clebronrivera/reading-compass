@@ -653,39 +653,64 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     // Has items but none are eligible (e.g., passages without approval)
     result.warnings.push('No eligible content found. For passage items, ensure validation_status is set to "approved".');
   } else {
-    // Group by grade_target for form generation
+  // Group by grade_target for form generation
     const byGrade: Record<string, ItemRow[]> = {};
     for (const item of eligibleItems) {
       const payload = item.content_payload as Record<string, unknown>;
       const grade = String(payload.grade_target || payload.grade_level || 'unknown');
+      // SAFETY: Never generate forms for 'unknown' grade - this causes mega-form explosion
+      if (grade === 'unknown') {
+        result.warnings.push(`Skipping item "${item.item_id}" - no valid grade tag.`);
+        continue;
+      }
       if (!byGrade[grade]) byGrade[grade] = [];
       byGrade[grade].push(item);
     }
 
+    // Get config from section_d (already parsed earlier)
+    const itemsPerFormConfig = sectionD.items_per_form || 1; // Default to 1 for passage-based assessments
+    const sectionIData = (asr.section_i as ASRSectionI) || {};
+    const targetFormsPerLevelConfig = sectionIData.target_forms_per_level || 2;
+
     // Generate forms for each grade with eligible content
     for (const [grade, gradeItems] of Object.entries(byGrade)) {
-      for (let i = 0; i < gradeItems.length; i++) {
-        const item = gradeItems[i];
-        const payload = item.content_payload as Record<string, unknown>;
-        const formNumber = i + 1;
-        const formId = `${assessmentId}.${grade}.form${String(formNumber).padStart(2, '0')}`;
+      // Group items into forms based on items_per_form
+      // For passage-based assessments (items_per_form=1), each passage gets its own form
+      // For item-based assessments (items_per_form>1), batch items into forms
+      const formsToCreate = Math.min(
+        Math.ceil(gradeItems.length / itemsPerFormConfig),
+        targetFormsPerLevelConfig
+      );
+
+      for (let formNum = 1; formNum <= formsToCreate; formNum++) {
+        const formId = `${assessmentId}.${grade}.form${String(formNum).padStart(2, '0')}`;
 
         // Check if form already exists
         if (forms?.some(f => f.form_id === formId)) {
           continue;
         }
 
+        // Get items for this form
+        const startIdx = (formNum - 1) * itemsPerFormConfig;
+        const formItems = gradeItems.slice(startIdx, startIdx + itemsPerFormConfig);
+        
+        if (formItems.length === 0) continue;
+
+        // Use first item for metadata (passage-based) or aggregate
+        const firstPayload = formItems[0].content_payload as Record<string, unknown>;
+
         const formInsert = {
           form_id: formId,
           content_bank_id: targetBankForForms.content_bank_id,
           assessment_id: assessmentId,
-          form_number: formNumber,
+          form_number: formNum,
           grade_or_level_tag: grade,
-          equivalence_set_id: (payload.equivalence_set_id as string) || null,
+          equivalence_set_id: (firstPayload.equivalence_set_id as string) || null,
           status: 'draft',
           metadata: {
-            passage_id: String(payload.passage_id || payload.item_id || ''),
-            locked_word_token_order: payload.word_tokens as string[] || [],
+            item_count: formItems.length,
+            passage_id: formItems.length === 1 ? String(firstPayload.passage_id || firstPayload.item_id || '') : undefined,
+            locked_word_token_order: formItems.length === 1 ? (firstPayload.word_tokens as string[] || []) : undefined,
             generated_at: new Date().toISOString(),
           },
         };
