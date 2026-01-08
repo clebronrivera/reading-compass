@@ -63,7 +63,7 @@ export default function SessionStudentPage() {
   // Detect assessment type for specialized displays
   const isORFSession = session.assessment_id === 'FL-ORF';
   const isBlankListeningSession = ['PA-OONS', 'PA-RHYM', 'PA-SYLS'].includes(session.assessment_id);
-  const isPrintedWordSession = session.assessment_id === 'PH-MPHY';
+  const isPrintedWordSession = ['PH-MPHY', 'PH-LWID'].includes(session.assessment_id);
 
   // Show completion message if session is done
   if (session.status === 'completed') {
@@ -107,16 +107,16 @@ export default function SessionStudentPage() {
     );
   }
 
-  // PH-MPHY: Show affixed_form (printed word) to student
+  // PH-MPHY/PH-LWID: Show printed stimulus to student
   if (isPrintedWordSession) {
-    const mphyContent = content as unknown as { affixed_form?: string };
-    const affixedForm = mphyContent?.affixed_form || stimulus;
+    const mphyContent = content as unknown as { affixed_form?: string; text?: string };
+    const displayText = mphyContent?.affixed_form || mphyContent?.text || stimulus;
     
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-8">
         <div className="text-center max-w-4xl">
           <p className="text-8xl md:text-9xl font-bold text-foreground leading-tight">
-            {affixedForm}
+            {displayText}
           </p>
           <p className="text-lg text-muted-foreground mt-8">
             Item {currentIndex + 1} of {items.length}

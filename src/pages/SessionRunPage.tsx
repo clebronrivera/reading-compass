@@ -19,6 +19,7 @@ import { OnsetRimeRunner } from '@/components/phonological/OnsetRimeRunner';
 import { RhymeRunner } from '@/components/phonological/RhymeRunner';
 import { SyllableRunner } from '@/components/phonological/SyllableRunner';
 import { MorphophonemicRunner } from '@/components/phonological/MorphophonemicRunner';
+import { LetterWordRunner } from '@/components/phonics/LetterWordRunner';
 import type { ORFPassageContent } from '@/types/orf';
 
 export default function SessionRunPage() {
@@ -231,6 +232,16 @@ export default function SessionRunPage() {
   if (session?.assessment_id === 'PH-MPHY' && items) {
     return (
       <MorphophonemicRunner 
+        session={session} 
+        items={items} 
+      />
+    );
+  }
+
+  // Route to Letter-Word Runner for PH-LWID sessions
+  if (session?.assessment_id === 'PH-LWID' && items) {
+    return (
+      <LetterWordRunner 
         session={session} 
         items={items} 
       />
