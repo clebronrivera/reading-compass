@@ -315,6 +315,7 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
         'spoken_onset_rime_pair': 'phoneme', // Onset-rime blending uses phoneme type
         'spoken_word_pair': 'phoneme', // Rhyme recognition uses phoneme type
         'spoken_word_prompt': 'phoneme', // Syllable segmentation uses phoneme type
+        'printed_affixed_word_with_base_context': 'word', // Morphophonemic patterns uses word type
       };
       const rawItemType = sectionD.item_type || 'phoneme';
       const itemType = itemTypeMap[rawItemType] || rawItemType;
