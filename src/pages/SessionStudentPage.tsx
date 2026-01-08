@@ -63,6 +63,7 @@ export default function SessionStudentPage() {
   // Detect assessment type for specialized displays
   const isORFSession = session.assessment_id === 'FL-ORF';
   const isBlankListeningSession = ['PA-OONS', 'PA-RHYM', 'PA-SYLS'].includes(session.assessment_id);
+  const isPrintedWordSession = session.assessment_id === 'PH-MPHY';
 
   // Show completion message if session is done
   if (session.status === 'completed') {
@@ -99,6 +100,25 @@ export default function SessionStudentPage() {
           </div>
           <p className="text-3xl font-medium text-foreground">Listening...</p>
           <p className="text-lg text-muted-foreground mt-2">
+            Item {currentIndex + 1} of {items.length}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // PH-MPHY: Show affixed_form (printed word) to student
+  if (isPrintedWordSession) {
+    const mphyContent = content as unknown as { affixed_form?: string };
+    const affixedForm = mphyContent?.affixed_form || stimulus;
+    
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-8">
+        <div className="text-center max-w-4xl">
+          <p className="text-8xl md:text-9xl font-bold text-foreground leading-tight">
+            {affixedForm}
+          </p>
+          <p className="text-lg text-muted-foreground mt-8">
             Item {currentIndex + 1} of {items.length}
           </p>
         </div>
