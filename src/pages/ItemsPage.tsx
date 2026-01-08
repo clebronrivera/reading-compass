@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { EmptyState } from '@/components/ui/empty-state';
-import type { ItemContent } from '@/types/database';
+import { getDisplayText } from '@/lib/itemDisplay';
 
 export default function ItemsPage() {
   const { data: items, isLoading, error, refetch } = useItems();
@@ -45,7 +45,7 @@ export default function ItemsPage() {
         </TableHeader>
         <TableBody>
           {items.map((item) => {
-            const payload = item.content_payload as ItemContent;
+            const displayText = getDisplayText(item.content_payload);
             return (
               <TableRow key={item.item_id}>
                 <TableCell>
@@ -54,7 +54,7 @@ export default function ItemsPage() {
                   </Link>
                 </TableCell>
                 <TableCell><Badge variant="outline">{item.item_type}</Badge></TableCell>
-                <TableCell>{payload?.stimulus || '-'}</TableCell>
+                <TableCell>{displayText || '-'}</TableCell>
                 <TableCell>
                   <Link to={`/forms/${item.form_id}`} className="text-primary hover:underline font-mono text-xs">
                     {item.form_id}

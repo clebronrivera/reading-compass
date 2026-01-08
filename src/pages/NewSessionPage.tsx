@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 export default function NewSessionPage() {
   const navigate = useNavigate();
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>('');
+  const [selectedGradeBand, setSelectedGradeBand] = useState<string>('');
   const [selectedFormId, setSelectedFormId] = useState<string>('');
   const [studentName, setStudentName] = useState('');
   const [gradeTag, setGradeTag] = useState('');
@@ -26,6 +27,10 @@ export default function NewSessionPage() {
   const { data: allForms } = useForms();
   const createSession = useCreateSession();
 
+  // Detect grade-banded assessments
+  const GRADE_BANDED_ASSESSMENTS = ['PH-LWID', 'FL-WRF'];
+  const isGradeBanded = GRADE_BANDED_ASSESSMENTS.includes(selectedAssessmentId);
+
   // Bank-aware form filtering
   const eligibleForms = useMemo(() => {
     if (!selectedAssessmentId || !assessmentBanks || !allForms) return [];
@@ -34,9 +39,29 @@ export default function NewSessionPage() {
     return allForms.filter(form => linkedBankIds.has(form.content_bank_id));
   }, [selectedAssessmentId, assessmentBanks, allForms]);
 
+  // Get available grade bands from eligible forms
+  const availableGradeBands = useMemo(() => {
+    if (!eligibleForms.length) return [];
+    const bands = new Set(eligibleForms.map(f => f.grade_or_level_tag));
+    // Remove 'unknown' and sort
+    return Array.from(bands).filter(b => b !== 'unknown').sort();
+  }, [eligibleForms]);
+
+  // Filter forms by selected grade band for grade-banded assessments
+  const filteredForms = useMemo(() => {
+    if (!isGradeBanded || !selectedGradeBand) return eligibleForms;
+    return eligibleForms.filter(f => f.grade_or_level_tag === selectedGradeBand);
+  }, [eligibleForms, isGradeBanded, selectedGradeBand]);
+
   const handleAssessmentChange = (assessmentId: string) => {
     setSelectedAssessmentId(assessmentId);
+    setSelectedGradeBand(''); // Reset grade band when assessment changes
     setSelectedFormId(''); // Reset form selection when assessment changes
+  };
+
+  const handleGradeBandChange = (gradeBand: string) => {
+    setSelectedGradeBand(gradeBand);
+    setSelectedFormId(''); // Reset form selection when grade band changes
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,31 +131,56 @@ export default function NewSessionPage() {
               </Select>
             </div>
 
+            {/* Grade Band Selector (for grade-banded assessments) */}
+            {isGradeBanded && (
+              <div className="space-y-2">
+                <Label htmlFor="gradeBand">Grade Band *</Label>
+                <Select value={selectedGradeBand} onValueChange={handleGradeBandChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      availableGradeBands.length === 0 
+                        ? "No grade bands available"
+                        : "Select a grade band"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableGradeBands.map((band) => (
+                      <SelectItem key={band} value={band}>
+                        {band}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="form">Form *</Label>
               <Select 
                 value={selectedFormId} 
                 onValueChange={setSelectedFormId}
-                disabled={!selectedAssessmentId || eligibleForms.length === 0}
+                disabled={!selectedAssessmentId || filteredForms.length === 0 || (isGradeBanded && !selectedGradeBand)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={
                     !selectedAssessmentId 
                       ? "Select an assessment first" 
-                      : eligibleForms.length === 0 
-                        ? "No forms available for this assessment"
-                        : "Select a form"
+                      : isGradeBanded && !selectedGradeBand
+                        ? "Select a grade band first"
+                        : filteredForms.length === 0 
+                          ? "No forms available for this assessment"
+                          : "Select a form"
                   } />
                 </SelectTrigger>
                 <SelectContent>
-                  {eligibleForms.map((form) => (
+                  {filteredForms.map((form) => (
                     <SelectItem key={form.form_id} value={form.form_id}>
                       {form.form_id}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {selectedAssessmentId && eligibleForms.length === 0 && (
+              {selectedAssessmentId && !isGradeBanded && eligibleForms.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   No forms are linked to this assessment's content banks.
                 </p>

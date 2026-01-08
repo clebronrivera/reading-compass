@@ -9,7 +9,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { useForms } from '@/lib/api/forms';
 import { useItemsByForm } from '@/lib/api/items';
-import type { ItemContent } from '@/types/registry';
+import { getDisplayText } from '@/lib/itemDisplay';
 import type { ORFPassageContent } from '@/types/orf';
 
 export default function AssessmentPreviewPage() {
@@ -197,13 +197,13 @@ function StudentViewPreview({
         <Badge variant="outline">Item Grid</Badge>
         <div className="grid grid-cols-10 gap-2">
           {items.slice(0, 52).map((item) => {
-            const content = item.content_payload as ItemContent;
+            const displayText = getDisplayText(item.content_payload);
             return (
               <div 
                 key={item.item_id}
                 className="aspect-square flex items-center justify-center text-2xl font-bold border rounded bg-card hover:bg-muted/50 transition-colors"
               >
-                {content.stimulus || content.correct_answer || '?'}
+                {displayText || '?'}
               </div>
             );
           })}
@@ -221,14 +221,14 @@ function StudentViewPreview({
       <Badge variant="outline">Item List</Badge>
       <div className="space-y-2 max-h-[400px] overflow-y-auto">
         {items.map((item) => {
-          const content = item.content_payload as ItemContent;
+          const displayText = getDisplayText(item.content_payload);
           return (
             <div 
               key={item.item_id}
               className="p-3 border rounded bg-card"
             >
               <span className="text-lg">
-                {content.stimulus || content.text || JSON.stringify(content).slice(0, 50)}
+                {displayText || JSON.stringify(item.content_payload).slice(0, 50)}
               </span>
             </div>
           );
@@ -315,7 +315,7 @@ function AssessorViewPreview({
         </div>
         <div className="grid grid-cols-10 gap-2">
           {items.slice(0, 26).map((item, idx) => {
-            const content = item.content_payload as ItemContent;
+            const displayText = getDisplayText(item.content_payload);
             const isMarkedExample = idx === 3 || idx === 7; // Mock some as incorrect
             return (
               <div 
@@ -326,7 +326,7 @@ function AssessorViewPreview({
                     : 'bg-card hover:bg-muted/50'
                 }`}
               >
-                {content.stimulus || content.correct_answer || '?'}
+                {displayText || '?'}
               </div>
             );
           })}
@@ -353,8 +353,9 @@ function AssessorViewPreview({
         <Badge variant="secondary">{items.length} Items</Badge>
       </div>
       <div className="space-y-2 max-h-[300px] overflow-y-auto">
-        {items.slice(0, 10).map((item, idx) => {
-          const content = item.content_payload as ItemContent;
+        {items.slice(0, 10).map((item) => {
+          const displayText = getDisplayText(item.content_payload);
+          const payload = item.content_payload as Record<string, unknown>;
           return (
             <div 
               key={item.item_id}
@@ -362,11 +363,11 @@ function AssessorViewPreview({
             >
               <div>
                 <span className="text-sm text-muted-foreground mr-2">#{item.sequence_number}</span>
-                <span>{content.stimulus || content.text || '—'}</span>
+                <span>{displayText || '—'}</span>
               </div>
               <div className="flex gap-1">
                 <Badge variant="outline" className="text-xs">
-                  {content.correct_answer || 'See rubric'}
+                  {(payload.correct_answer as string) || 'See rubric'}
                 </Badge>
               </div>
             </div>
