@@ -611,6 +611,16 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
     result.warnings.push(`Could not check existing forms: ${formsError.message}`);
   }
 
+  // If forms already exist in this bank, don't auto-generate more.
+  // (This prevents accidental creation of duplicate "unknown" forms when items lack grade tags.)
+  if (forms && forms.length > 0) {
+    result.warnings.push(
+      'Forms already exist for this content bank. Skipping automatic form generation to avoid duplicates.'
+    );
+    result.success = result.errors.length === 0;
+    return result;
+  }
+
   // Fetch items to check for content
   const { data: items, error: itemsError } = await supabase
     .from('items')
