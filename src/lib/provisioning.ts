@@ -1,5 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { ASRVersionRow, ContentBankRow, ScoringOutputRow, FormRow, ItemRow } from '@/types/database';
+import type { ASRVersionRow, ContentBankRow, ScoringOutputRow, FormRow, ItemRow, CanonicalGradeTag } from '@/types/database';
+import { VALID_GRADE_TAGS } from '@/types/database';
+
+/**
+ * Validates that a grade tag is in the canonical allowed list
+ */
+function isValidGradeTag(tag: string): tag is CanonicalGradeTag {
+  return (VALID_GRADE_TAGS as readonly string[]).includes(tag);
+}
 
 export interface ProvisioningResult {
   success: boolean;
@@ -433,6 +441,12 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
       // Create one form per grade level
       for (const [gradeTag, wordList] of Object.entries(gradeWordLists)) {
         if (!Array.isArray(wordList) || wordList.length === 0) continue;
+        
+        // Validate grade tag before creating forms
+        if (!isValidGradeTag(gradeTag)) {
+          result.errors.push(`Invalid grade tag '${gradeTag}' in sample_items_by_grade. Allowed: ${VALID_GRADE_TAGS.join(', ')}`);
+          continue;
+        }
 
         for (let formNum = 1; formNum <= targetFormsPerLevel; formNum++) {
           const formId = `${assessmentId}.${gradeTag}.form${String(formNum).padStart(2, '0')}`;
