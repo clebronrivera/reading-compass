@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { useForms } from '@/lib/api/forms';
 import { useItemsByForm } from '@/lib/api/items';
 import { getDisplayText } from '@/lib/itemDisplay';
+import { getGradeLabel } from '@/lib/gradeUtils';
 import type { ORFPassageContent } from '@/types/orf';
 
 export default function AssessmentPreviewPage() {
@@ -68,7 +69,7 @@ export default function AssessmentPreviewPage() {
                 <SelectItem key={form.form_id} value={form.form_id}>
                   <span className="font-mono text-sm">{form.form_id}</span>
                   <span className="text-muted-foreground ml-2">
-                    ({form.grade_or_level_tag})
+                    ({getGradeLabel(form.grade_or_level_tag)})
                   </span>
                 </SelectItem>
               ))}
