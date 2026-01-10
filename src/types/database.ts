@@ -46,6 +46,25 @@ export type ValidationStatus = 'incomplete' | 'valid' | 'needs-review';
 export type ItemType = 'letter' | 'word' | 'sentence' | 'passage' | 'question' | 'prompt';
 export type SessionStatus = 'created' | 'in_progress' | 'completed';
 
+// Canonical grade tag type (enforced by database constraint)
+export type CanonicalGradeTag = 
+  // Numeric Levels
+  | 'K' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11' | '12'
+  // Ranges
+  | 'K-1' | '1-2' | '2-3' | '3-4' | '4-5' | '5-6' | '6-7' | '6-8' | '7-8' | '9-12'
+  // Specific Assessment Bands (Crucial for PH-LWID)
+  | 'G1' | 'G2' | 'G3' | 'G4' | 'G5' | 'G6' | 'G7' | 'G8' | 'G2_3'
+  // Universal
+  | 'all';
+
+// Helper array for runtime validation
+export const VALID_GRADE_TAGS = [
+  'K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
+  'K-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '6-8', '7-8', '9-12',
+  'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G2_3',
+  'all'
+] as const;
+
 // ASR Section types (for type-safe JSONB access)
 export interface ASRSectionA {
   asr_id?: string;
