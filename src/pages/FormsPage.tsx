@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { EmptyState } from '@/components/ui/empty-state';
+import { getGradeLabel } from '@/lib/gradeUtils';
 
 export default function FormsPage() {
   const { data: forms, isLoading, error, refetch } = useForms();
@@ -50,7 +51,7 @@ export default function FormsPage() {
                   {f.form_id}
                 </Link>
               </TableCell>
-              <TableCell>{f.grade_or_level_tag}</TableCell>
+              <TableCell>{getGradeLabel(f.grade_or_level_tag)}</TableCell>
               <TableCell>{f.form_number}</TableCell>
               <TableCell>
                 <Link to={`/banks/${f.content_bank_id}`} className="text-primary hover:underline font-mono text-xs">

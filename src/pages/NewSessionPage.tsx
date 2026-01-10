@@ -13,6 +13,7 @@ import { useAssessmentBanks } from '@/lib/api/assessmentBanks';
 import { useForms } from '@/lib/api/forms';
 import { useCreateSession } from '@/lib/api/sessions';
 import { toast } from 'sonner';
+import { getGradeLabel } from '@/lib/gradeUtils';
 
 export default function NewSessionPage() {
   const navigate = useNavigate();
@@ -146,7 +147,7 @@ export default function NewSessionPage() {
                   <SelectContent>
                     {availableGradeBands.map((band) => (
                       <SelectItem key={band} value={band}>
-                        {band}
+                        {getGradeLabel(band)}
                       </SelectItem>
                     ))}
                   </SelectContent>

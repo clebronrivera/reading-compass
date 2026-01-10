@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { ArrowLeft } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { getGradeLabel } from '@/lib/gradeUtils';
 
 export default function FormDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,7 +52,7 @@ export default function FormDetailPage() {
         </Link>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Form {form.form_number} — {form.grade_or_level_tag}</h1>
+            <h1 className="text-2xl font-bold">Form {form.form_number} — {getGradeLabel(form.grade_or_level_tag)}</h1>
             <p className="font-mono text-muted-foreground">{form.form_id}</p>
           </div>
           <StatusBadge status={form.status || 'draft'} size="lg" />
@@ -85,7 +86,7 @@ export default function FormDetailPage() {
           <div className="space-y-3">
             <div>
               <p className="text-sm text-muted-foreground">Grade/Level Tag</p>
-              <p>{form.grade_or_level_tag}</p>
+              <p>{getGradeLabel(form.grade_or_level_tag)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Form Number</p>

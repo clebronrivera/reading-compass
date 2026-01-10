@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { ArrowLeft, Check, X } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { getGradeLabel } from '@/lib/gradeUtils';
 
 export default function ContentBankDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -126,7 +127,7 @@ export default function ContentBankDetailPage() {
                         {form.form_id}
                       </Link>
                     </TableCell>
-                    <TableCell>{form.grade_or_level_tag}</TableCell>
+                    <TableCell>{getGradeLabel(form.grade_or_level_tag)}</TableCell>
                     <TableCell>{form.form_number}</TableCell>
                     <TableCell><StatusBadge status={form.status || 'draft'} /></TableCell>
                   </TableRow>
