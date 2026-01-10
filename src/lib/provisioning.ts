@@ -51,6 +51,44 @@ interface ASRSectionH {
 // generation_source determines how provisioning creates items
 type GenerationSource = 'stimulus_pool' | 'sample_items' | 'sample_items_by_grade' | 'external_import';
 
+// ============= Pool Integrity Validation =============
+interface PoolValidation {
+  isValid: boolean;
+  error?: string;
+  warning?: string;
+  poolSize: number;
+  requiredSize: number;
+}
+
+/**
+ * Validates pool size against required item count.
+ * Returns error if under-populated, warning if over-populated.
+ * This prevents "Blind Generation" (incomplete forms) and "Greedy Generation" (oversized forms).
+ */
+function validatePoolIntegrity(
+  poolSize: number,
+  requiredSize: number,
+  poolName: string
+): PoolValidation {
+  if (poolSize < requiredSize) {
+    return {
+      isValid: false,
+      error: `[Integrity Violation] Pool '${poolName}' has insufficient items. Required: ${requiredSize}, Found: ${poolSize}.`,
+      poolSize,
+      requiredSize,
+    };
+  }
+  if (poolSize > requiredSize) {
+    return {
+      isValid: true,
+      warning: `Pool '${poolName}' has ${poolSize} items, will use exactly ${requiredSize}.`,
+      poolSize,
+      requiredSize,
+    };
+  }
+  return { isValid: true, poolSize, requiredSize };
+}
+
 interface SampleItem {
   stimulus?: string;
   expected_response?: string;
@@ -218,6 +256,22 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
         }
       }
 
+      // Validate pool integrity before generation
+      const poolValidation = validatePoolIntegrity(
+        stimulusPool.length,
+        itemsPerForm,
+        `stimulus_pool for ${assessmentId}`
+      );
+
+      if (!poolValidation.isValid) {
+        result.errors.push(poolValidation.error!);
+        return result; // Hard fail - don't create incomplete forms
+      }
+
+      if (poolValidation.warning) {
+        result.warnings.push(poolValidation.warning);
+      }
+
       // Generate shuffled token sequences following cycle rule
       const generateTokenSequence = (pool: string[], count: number): string[] => {
         const tokens: string[] = [];
@@ -338,21 +392,28 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
         return copy;
       };
 
+      // Validate pool integrity before generation
+      const poolValidation = validatePoolIntegrity(
+        sampleItems.length,
+        itemsPerForm,
+        `sample_items for ${assessmentId}`
+      );
+
+      if (!poolValidation.isValid) {
+        result.errors.push(poolValidation.error!);
+        return result; // Hard fail - don't create forms with insufficient items
+      }
+
+      if (poolValidation.warning) {
+        result.warnings.push(poolValidation.warning);
+      }
+
       // Create forms with shuffled items from sample_items pool
       for (let formNum = 1; formNum <= targetFormsPerLevel; formNum++) {
         const formId = `${assessmentId}.form${String(formNum).padStart(2, '0')}`;
         
-        // Shuffle and take itemsPerForm items (or cycle if pool is smaller)
-        let selectedItems: SampleItem[] = [];
-        if (sampleItems.length >= itemsPerForm) {
-          selectedItems = shuffleArray(sampleItems).slice(0, itemsPerForm);
-        } else {
-          // Cycle through pool if not enough items
-          while (selectedItems.length < itemsPerForm) {
-            selectedItems.push(...shuffleArray(sampleItems));
-          }
-          selectedItems = selectedItems.slice(0, itemsPerForm);
-        }
+        // Strict slice - no cycling (validated above)
+        const selectedItems = shuffleArray(sampleItems).slice(0, itemsPerForm);
         
         // Create the form
         const { data: newForm, error: formError } = await supabase
@@ -448,9 +509,29 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
           continue;
         }
 
+        // Determine required items per form (use config or full list length)
+        const requiredItemsPerForm = sectionD.items_per_form || wordList.length;
+
+        // Validate pool integrity per grade
+        const gradeValidation = validatePoolIntegrity(
+          wordList.length,
+          requiredItemsPerForm,
+          `sample_items_by_grade.${gradeTag}`
+        );
+
+        if (!gradeValidation.isValid) {
+          result.warnings.push(gradeValidation.error!); // Warn but continue other grades
+          continue; // Skip this grade level
+        }
+
+        if (gradeValidation.warning) {
+          result.warnings.push(gradeValidation.warning);
+        }
+
         for (let formNum = 1; formNum <= targetFormsPerLevel; formNum++) {
           const formId = `${assessmentId}.${gradeTag}.form${String(formNum).padStart(2, '0')}`;
-          const shuffledWords = shuffleArray(wordList);
+          // Strict slice to required count
+          const shuffledWords = shuffleArray(wordList).slice(0, requiredItemsPerForm);
           
           // Create the form
           const { data: newForm, error: formError } = await supabase
@@ -688,13 +769,23 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
 
     // Generate forms for each grade with eligible content
     for (const [grade, gradeItems] of Object.entries(byGrade)) {
-      // Group items into forms based on items_per_form
-      // For passage-based assessments (items_per_form=1), each passage gets its own form
-      // For item-based assessments (items_per_form>1), batch items into forms
-      const formsToCreate = Math.min(
-        Math.ceil(gradeItems.length / itemsPerFormConfig),
-        targetFormsPerLevelConfig
-      );
+      // Validate we have enough items for at least one complete form
+      if (gradeItems.length < itemsPerFormConfig) {
+        result.warnings.push(
+          `[Integrity Warning] Grade '${grade}' has ${gradeItems.length} items, need ${itemsPerFormConfig}. Skipping form generation.`
+        );
+        continue;
+      }
+
+      // Calculate exactly how many complete forms we can create
+      const completeFormsAvailable = Math.floor(gradeItems.length / itemsPerFormConfig);
+      const formsToCreate = Math.min(completeFormsAvailable, targetFormsPerLevelConfig);
+
+      if (completeFormsAvailable < targetFormsPerLevelConfig) {
+        result.warnings.push(
+          `Grade '${grade}' can only produce ${completeFormsAvailable} complete forms (target: ${targetFormsPerLevelConfig}).`
+        );
+      }
 
       for (let formNum = 1; formNum <= formsToCreate; formNum++) {
         const formId = `${assessmentId}.${grade}.form${String(formNum).padStart(2, '0')}`;
@@ -704,11 +795,12 @@ export async function generateAssessmentAssets(asr: ASRVersionRow): Promise<Prov
           continue;
         }
 
-        // Get items for this form
+        // Get items for this form - strict slicing for exactly itemsPerFormConfig items
         const startIdx = (formNum - 1) * itemsPerFormConfig;
         const formItems = gradeItems.slice(startIdx, startIdx + itemsPerFormConfig);
         
-        if (formItems.length === 0) continue;
+        // Skip if we can't fill a complete form (safety check)
+        if (formItems.length < itemsPerFormConfig) continue;
 
         // Use first item for metadata (passage-based) or aggregate
         const firstPayload = formItems[0].content_payload as Record<string, unknown>;
