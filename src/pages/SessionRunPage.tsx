@@ -24,6 +24,7 @@ import { PhonemeSegmentRunner } from '@/components/phonological/PhonemeSegmentRu
 import { MorphophonemicRunner } from '@/components/phonological/MorphophonemicRunner';
 import { LetterWordRunner } from '@/components/phonics/LetterWordRunner';
 import { VocabMCQRunner } from '@/components/vocabulary/VocabMCQRunner';
+import { ComprehensionRunner } from '@/components/comprehension/ComprehensionRunner';
 import type { ORFPassageContent } from '@/types/orf';
 
 export default function SessionRunPage() {
@@ -265,6 +266,11 @@ export default function SessionRunPage() {
   // Route to Vocab MCQ Runner for VO-MORP and VO-VOCA sessions
   if ((session?.assessment_id === 'VO-MORP' || session?.assessment_id === 'VO-VOCA') && items) {
     return <VocabMCQRunner session={session} items={items} />;
+  }
+
+  // Route to Comprehension Runner for RC-NARR and RC-INFO sessions
+  if ((session?.assessment_id === 'RC-NARR' || session?.assessment_id === 'RC-INFO') && items) {
+    return <ComprehensionRunner session={session} items={items} />;
   }
 
   const content = currentItem?.content_payload as ItemContent;
