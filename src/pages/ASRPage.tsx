@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useASRVersions } from '@/lib/api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { EmptyState } from '@/components/ui/empty-state';
+import { LayoutGrid } from 'lucide-react';
 import type { ASRSectionA } from '@/types/database';
 
 export default function ASRPage() {
@@ -32,7 +34,15 @@ export default function ASRPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">ASR Library</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">ASR Library</h1>
+        <Link to="/asr/viewer">
+          <Button variant="outline">
+            <LayoutGrid className="h-4 w-4 mr-2" />
+            Full Audit View
+          </Button>
+        </Link>
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
