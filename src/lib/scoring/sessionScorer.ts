@@ -56,7 +56,7 @@ export async function scoreAndPersistSession(sessionId: string): Promise<ScoredS
   if (responses && responses.length > 0) {
     await supabase
       .from('session_responses')
-      .update({ computed_scores: result.scores as unknown as Record<string, unknown> })
+      .update({ computed_scores: result.scores as unknown as import('@/integrations/supabase/types').Json })
       .eq('response_id', responses[0].response_id);
   }
 
