@@ -15,6 +15,7 @@ import ScoringPage from "./pages/ScoringPage";
 import ComponentPage from "./pages/ComponentPage";
 import AssessmentDetailPage from "./pages/AssessmentDetailPage";
 import ASRDetailPage from "./pages/ASRDetailPage";
+import ASRViewerPage from "./pages/ASRViewerPage";
 import ContentBankDetailPage from "./pages/ContentBankDetailPage";
 import FormDetailPage from "./pages/FormDetailPage";
 import ItemDetailPage from "./pages/ItemDetailPage";
@@ -49,6 +50,7 @@ const App = () => (
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/registry" element={<RegistryPage />} />
                     <Route path="/asr" element={<ASRPage />} />
+                    <Route path="/asr/viewer" element={<ASRViewerPage />} />
                     <Route path="/banks" element={<ContentBanksPage />} />
                     <Route path="/forms" element={<FormsPage />} />
                     <Route path="/items" element={<ItemsPage />} />
