@@ -268,8 +268,10 @@ export default function SessionRunPage() {
     return <VocabMCQRunner session={session} items={items} />;
   }
 
-  // Route to Comprehension Runner for RC-NARR and RC-INFO sessions
-  if ((session?.assessment_id === 'RC-NARR' || session?.assessment_id === 'RC-INFO') && items) {
+  // Route to Comprehension Runner for RC-NARR, RC-INFO, and RC-LIST sessions
+  if ((session?.assessment_id === 'RC-NARR' || 
+       session?.assessment_id === 'RC-INFO' || 
+       session?.assessment_id === 'RC-LIST') && items) {
     return <ComprehensionRunner session={session} items={items} />;
   }
 
