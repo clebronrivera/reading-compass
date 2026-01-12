@@ -15,11 +15,15 @@ import { isValidRouteId } from '@/lib/routeValidation';
 import { toast } from 'sonner';
 import type { ItemContent } from '@/types/database';
 import { ORFRunner } from '@/components/fluency/ORFRunner';
+import { LetterGridRunner } from '@/components/fluency/LetterGridRunner';
+import { WordReadingRunner } from '@/components/fluency/WordReadingRunner';
 import { OnsetRimeRunner } from '@/components/phonological/OnsetRimeRunner';
 import { RhymeRunner } from '@/components/phonological/RhymeRunner';
 import { SyllableRunner } from '@/components/phonological/SyllableRunner';
+import { PhonemeSegmentRunner } from '@/components/phonological/PhonemeSegmentRunner';
 import { MorphophonemicRunner } from '@/components/phonological/MorphophonemicRunner';
 import { LetterWordRunner } from '@/components/phonics/LetterWordRunner';
+import { VocabMCQRunner } from '@/components/vocabulary/VocabMCQRunner';
 import type { ORFPassageContent } from '@/types/orf';
 
 export default function SessionRunPage() {
@@ -240,12 +244,27 @@ export default function SessionRunPage() {
 
   // Route to Letter-Word Runner for PH-LWID sessions
   if (session?.assessment_id === 'PH-LWID' && items) {
-    return (
-      <LetterWordRunner 
-        session={session} 
-        items={items} 
-      />
-    );
+    return <LetterWordRunner session={session} items={items} />;
+  }
+
+  // Route to Letter Grid Runner for FL-LNF sessions
+  if (session?.assessment_id === 'FL-LNF' && items) {
+    return <LetterGridRunner session={session} items={items} />;
+  }
+
+  // Route to Word Reading Runner for FL-WRF sessions
+  if (session?.assessment_id === 'FL-WRF' && items) {
+    return <WordReadingRunner session={session} items={items} />;
+  }
+
+  // Route to Phoneme Segment Runner for FL-PSF and PA-PHON sessions
+  if ((session?.assessment_id === 'FL-PSF' || session?.assessment_id === 'PA-PHON') && items) {
+    return <PhonemeSegmentRunner session={session} items={items} />;
+  }
+
+  // Route to Vocab MCQ Runner for VO-MORP and VO-VOCA sessions
+  if ((session?.assessment_id === 'VO-MORP' || session?.assessment_id === 'VO-VOCA') && items) {
+    return <VocabMCQRunner session={session} items={items} />;
   }
 
   const content = currentItem?.content_payload as ItemContent;

@@ -27,6 +27,8 @@ import SessionStudentPage from "./pages/SessionStudentPage";
 import AssessmentPreviewPage from "./pages/AssessmentPreviewPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
+import SessionReportPage from "./pages/SessionReportPage";
+import ImportPage from "./pages/ImportPage";
 
 const queryClient = new QueryClient();
 
@@ -66,7 +68,9 @@ const App = () => (
                     <Route path="/sessions/new" element={<NewSessionPage />} />
                     <Route path="/sessions/:id/run" element={<SessionRunPage />} />
                     <Route path="/sessions/:id/student" element={<SessionStudentPage />} />
+                    <Route path="/sessions/:id/report" element={<SessionReportPage />} />
                     <Route path="/preview" element={<AssessmentPreviewPage />} />
+                    <Route path="/admin/import" element={<ImportPage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </MainLayout>
