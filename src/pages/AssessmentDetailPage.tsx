@@ -51,6 +51,7 @@ export default function AssessmentDetailPage() {
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [showScoringDialog, setShowScoringDialog] = useState(false);
   const [showBulkFormDialog, setShowBulkFormDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Validate route param before any queries
   if (!isValidRouteId(id)) {
@@ -197,8 +198,16 @@ export default function AssessmentDetailPage() {
           <Badge variant="outline">{componentInfo?.name || assessment.component_code}</Badge>
           <StatusBadge status={assessment.status} />
         </div>
-        <h1 className="text-2xl font-bold">{assessment.subcomponent_name}</h1>
-        <p className="font-mono text-muted-foreground">{assessment.assessment_id}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">{assessment.subcomponent_name}</h1>
+            <p className="font-mono text-muted-foreground">{assessment.assessment_id}</p>
+          </div>
+          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV
+          </Button>
+        </div>
       </div>
 
       {/* Dependency Chain Indicator */}
@@ -468,6 +477,12 @@ export default function AssessmentDetailPage() {
         assessmentId={id}
         linkedBanks={linkedBanks}
         existingForms={eligibleForms}
+      />
+
+      <CSVImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        assessment={assessment}
       />
     </div>
   );
