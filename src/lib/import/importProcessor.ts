@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { ImportType } from './templateSchemas';
-import type { FormInsert, ContentBankInsert, ScoringOutputInsert } from '@/types/database';
+import type { ItemInsert, FormInsert, ContentBankInsert, ScoringOutputInsert } from '@/types/database';
 import { createChangeLogEntry, formatImportSummary } from './changeLogger';
 
 const BATCH_SIZE = 100;

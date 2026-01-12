@@ -146,7 +146,6 @@ export async function analyzeImport(
   rows: Record<string, string>[]
 ): Promise<ReferenceValidationResult> {
   const idField = getIdField(type);
-  const tableName = getTableName(type);
   
   const ids = [...new Set(rows.map(r => r[idField]).filter(Boolean))];
   
