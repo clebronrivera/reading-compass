@@ -126,3 +126,22 @@ export function useUpdateForm() {
     },
   });
 }
+
+// Bulk create forms
+export function useBulkCreateForms() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (forms: FormInsert[]) => {
+      const { data, error } = await supabase
+        .from('forms')
+        .insert(forms)
+        .select();
+      if (error) throw error;
+      return data as FormRow[];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: formKeys.all });
+    },
+  });
+}

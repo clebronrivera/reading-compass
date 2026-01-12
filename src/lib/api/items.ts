@@ -106,3 +106,22 @@ export function useUpdateItem() {
     },
   });
 }
+
+// Bulk create items
+export function useBulkCreateItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (items: ItemInsert[]) => {
+      const { data, error } = await supabase
+        .from('items')
+        .insert(items)
+        .select();
+      if (error) throw error;
+      return data as ItemRow[];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: itemKeys.all });
+    },
+  });
+}
