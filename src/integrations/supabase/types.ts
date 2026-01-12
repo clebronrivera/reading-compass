@@ -255,6 +255,48 @@ export type Database = {
           },
         ]
       }
+      import_history: {
+        Row: {
+          assessment_id: string | null
+          change_note: string | null
+          file_name: string | null
+          import_id: string
+          import_type: string
+          imported_at: string | null
+          imported_by: string | null
+          rows_created: number
+          rows_failed: number
+          rows_processed: number
+          rows_updated: number
+        }
+        Insert: {
+          assessment_id?: string | null
+          change_note?: string | null
+          file_name?: string | null
+          import_id?: string
+          import_type: string
+          imported_at?: string | null
+          imported_by?: string | null
+          rows_created?: number
+          rows_failed?: number
+          rows_processed?: number
+          rows_updated?: number
+        }
+        Update: {
+          assessment_id?: string | null
+          change_note?: string | null
+          file_name?: string | null
+          import_id?: string
+          import_type?: string
+          imported_at?: string | null
+          imported_by?: string | null
+          rows_created?: number
+          rows_failed?: number
+          rows_processed?: number
+          rows_updated?: number
+        }
+        Relationships: []
+      }
       items: {
         Row: {
           content_payload: Json

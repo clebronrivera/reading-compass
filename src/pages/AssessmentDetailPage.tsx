@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { COMPONENT_INFO } from '@/types/registry';
-import { ArrowLeft, ArrowRight, CheckCircle2, XCircle, Loader2, Plus, Settings, X, Layers } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, XCircle, Loader2, Plus, Settings, X, Layers, Upload } from 'lucide-react';
 import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { LinkBankDialog } from '@/components/assessment/LinkBankDialog';
@@ -35,6 +35,7 @@ import { LinkFormDialog } from '@/components/assessment/LinkFormDialog';
 import { LinkScoringDialog } from '@/components/assessment/LinkScoringDialog';
 import { BulkFormGenerator } from '@/components/assessment/BulkFormGenerator';
 import { toast } from 'sonner';
+import { CSVImportDialog } from '@/components/import/CSVImportDialog';
 
 const STATUS_OPTIONS = ['stub', 'draft', 'active', 'deprecated'] as const;
 type AssessmentStatus = typeof STATUS_OPTIONS[number];
